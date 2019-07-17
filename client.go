@@ -21,6 +21,7 @@ type MessageReq struct {
 	SessionID string `json:"sessionId,omitempty"`
 }
 
+// ProtocolDebug chrome devtools protocol messages debug
 var ProtocolDebug = false
 
 // Client ...

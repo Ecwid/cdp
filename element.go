@@ -109,6 +109,7 @@ func (session *Session) Click(selector string, predicate func() bool) error {
 	if err != nil {
 		return err
 	}
+	session.dispatchMouseEvent(0, 0, DispatchMouseEventMoved, "none")
 	// calculate click point
 	x, y, err := session.clickablePoint(element)
 	if err != nil {

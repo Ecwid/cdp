@@ -24,7 +24,7 @@ var ErrSessionClosed = errors.New(`Session closed`)
 
 // Session CDP сессия
 type Session struct {
-	sync.RWMutex
+	rw            sync.RWMutex
 	client        *Client
 	sessionID     string
 	targetID      string
@@ -259,9 +259,9 @@ func (session *Session) listener() {
 	for e := range session.incomingEvent {
 
 		method = e["method"].(string)
-		session.RLock()
+		session.rw.RLock()
 		cb, has := session.callbacks[method]
-		session.RUnlock()
+		session.rw.RUnlock()
 		if has {
 			cb(e["params"].(Params))
 		}
@@ -335,18 +335,18 @@ func (session *Session) blockingSend(method string, params *Params) (MessageResu
 
 // Subscribe subscribe to CDP event
 func (session *Session) Subscribe(method string, callback func(params Params)) (unsubscribe func()) {
-	session.RLock()
+	session.rw.RLock()
 	_, has := session.callbacks[method]
-	session.RUnlock()
+	session.rw.RUnlock()
 	if has {
 		panic(`listener for event ` + method + ` already exist`)
 	}
-	session.Lock()
+	session.rw.Lock()
 	session.callbacks[method] = callback
-	session.Unlock()
+	session.rw.Unlock()
 	return func() {
-		session.Lock()
+		session.rw.Lock()
 		delete(session.callbacks, method)
-		session.Unlock()
+		session.rw.Unlock()
 	}
 }

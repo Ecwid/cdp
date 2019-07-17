@@ -22,18 +22,14 @@ type FrameTree struct {
 	ChildFrames []*FrameTree `json:"childFrames"`
 }
 
+// NavigationResult https://chromedevtools.github.io/devtools-protocol/tot/Page#method-navigate
 type NavigationResult struct {
 	FrameID   string `json:"frameId"`
 	LoaderID  string `json:"loaderId"`
 	ErrorText string `json:"errorText"`
 }
 
-type RequestedNavigation struct {
-	FrameID string `json:"frameId"`
-	Reason  string `json:"reason"`
-	URL     string `json:"url"`
-}
-
+// ScreencastFrameMetadata https://chromedevtools.github.io/devtools-protocol/tot/Page#type-ScreencastFrameMetadata
 type ScreencastFrameMetadata struct {
 	OffsetTop       float64 `json:"offsetTop"`
 	PageScaleFactor float64 `json:"pageScaleFactor"`
