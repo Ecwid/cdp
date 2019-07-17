@@ -1,0 +1,72 @@
+package cdp
+
+import "time"
+
+const (
+	// DispatchKeyEventChar ..
+	DispatchKeyEventChar = "char"
+	// DispatchKeyEventKeyDown нажимаем кнопку
+	DispatchKeyEventKeyDown = "keyDown"
+	// DispatchKeyEventKeyUp отпускаем кнопку
+	DispatchKeyEventKeyUp = "keyUp"
+	// DispatchMouseEventMoved перемещение указателя мыши
+	DispatchMouseEventMoved = "mouseMoved"
+	// DispatchMouseEventPressed нажатие кнопки мыши
+	DispatchMouseEventPressed = "mousePressed"
+	// DispatchMouseEventReleased отпускаем кнопку мыши
+	DispatchMouseEventReleased = "mouseReleased"
+)
+
+func (session *Session) sendRune(c rune) {
+	_, _ = session.blockingSend("Input.dispatchKeyEvent", &Params{
+		"type":                  DispatchKeyEventKeyDown,
+		"windowsVirtualKeyCode": int(c),
+		"nativeVirtualKeyCode":  int(c),
+		"unmodifiedText":        string(c),
+		"text":                  string(c),
+	})
+	_, _ = session.blockingSend("Input.dispatchKeyEvent", &Params{
+		"type":                  DispatchKeyEventKeyUp,
+		"windowsVirtualKeyCode": int(c),
+		"nativeVirtualKeyCode":  int(c),
+		"unmodifiedText":        string(c),
+		"text":                  string(c),
+	})
+}
+
+func (session *Session) dispatchKeyEvent(text string) error {
+	for _, c := range text {
+		time.Sleep(time.Millisecond * 10)
+		if _, err := session.blockingSend("Input.dispatchKeyEvent", &Params{
+			"type":                  DispatchKeyEventChar,
+			"windowsVirtualKeyCode": int(c),
+			"nativeVirtualKeyCode":  int(c),
+			"unmodifiedText":        string(c),
+			"text":                  string(c),
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (session *Session) insertText(text string) error {
+	_, err := session.blockingSend("Input.insertText", &Params{"text": text})
+	return err
+}
+
+func (session *Session) mouseClick(x float64, y float64) {
+	session.dispatchMouseEvent(x, y, DispatchMouseEventMoved, "none")
+	session.dispatchMouseEvent(x, y, DispatchMouseEventPressed, "left")
+	session.dispatchMouseEvent(x, y, DispatchMouseEventReleased, "left")
+}
+
+func (session *Session) dispatchMouseEvent(x float64, y float64, eventType string, button string) {
+	_, _ = session.blockingSend("Input.dispatchMouseEvent", &Params{
+		"type":       eventType,
+		"button":     button,
+		"x":          x,
+		"y":          y,
+		"clickCount": 1,
+	})
+}
