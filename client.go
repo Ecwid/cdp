@@ -103,7 +103,7 @@ func (client *Client) NewSession(targetID *string) *Session {
 
 	_, _ = session.blockingSend("Page.enable", &Params{})
 	_, _ = session.blockingSend("Runtime.enable", &Params{})
-	session.networkEnable()
+	session.NetworkEnable()
 	_ = session.setLifecycleEventsEnabled(true)
 
 	session.switchContext(*targetID)

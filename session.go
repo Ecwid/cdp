@@ -6,8 +6,6 @@ import (
 	"math"
 	"sync"
 	"time"
-
-	"github.com/ecwid/cdp/har"
 )
 
 // NavigationTimeout - navigation timeout
@@ -31,16 +29,15 @@ type Session struct {
 	contextID     int64
 	frameID       string
 	incomingEvent chan MessageResult // очередь событий на обработку от websocket клиента
-	callbacks     map[string]func(Params)
+	callbacks     map[string][]func(Params)
 	closed        chan bool
-	har           *HAR
 }
 
 func newSession(client *Client) *Session {
 	session := &Session{
 		client:        client,
 		incomingEvent: make(chan MessageResult, 2000),
-		callbacks:     make(map[string]func(Params)),
+		callbacks:     make(map[string][]func(Params)),
 		closed:        make(chan bool, 1),
 	}
 	go session.listener()
@@ -107,7 +104,7 @@ func (session *Session) Navigate(urlStr string) error {
 	defer unsubscribe()
 	nav, err := session.navigate(urlStr, session.frameID)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	if nav.ErrorText != "" {
 		return errors.New(nav.ErrorText)
@@ -132,7 +129,7 @@ func (session *Session) Reload() error {
 	})
 	defer unsubscribe()
 	if err := session.reload(); err != nil {
-		panic(err)
+		return err
 	}
 	select {
 	case <-eventFired:
@@ -168,12 +165,13 @@ func (session *Session) GetScreenshot(format string, quality int8, fullPage bool
 // TargetCreated ...
 func (session *Session) TargetCreated() chan *TargetInfo {
 	message := make(chan *TargetInfo)
-	session.Subscribe("Target.targetCreated", func(msg Params) {
+	var unsubscribe func()
+	unsubscribe = session.Subscribe("Target.targetCreated", func(msg Params) {
 		targetInfo := &TargetInfo{}
 		unmarshal(msg["targetInfo"], targetInfo)
 		if targetInfo.Type == "page" {
 			message <- targetInfo
-			delete(session.callbacks, "Target.targetCreated")
+			unsubscribe()
 		}
 	})
 	return message
@@ -219,51 +217,20 @@ func (session *Session) Title() (string, error) {
 	return history.Entries[history.CurrentIndex].Title, nil
 }
 
-// HARBegin start HAR records
-func (session *Session) HARBegin() {
-	session.networkEnable()
-	session.har = &HAR{
-		Log: &har.HAR{
-			Version: "1.2",
-			Creator: &har.Creator{
-				Name:    "ecwid-cdp",
-				Version: "0.1",
-			},
-			Pages:   make([]*har.Page, 0),
-			Entries: make([]*har.Entry, 0),
-		},
-	}
-}
-
-// GetHARRequest ...
-func (session *Session) GetHARRequest(requestID string) *har.Request {
-	if session.har == nil {
-		return nil
-	}
-	e := session.har.entryByRequestID(requestID)
-	if e == nil {
-		return nil
-	}
-	return e.Request
-}
-
-// HAREnd stop and get recorded HAR
-func (session *Session) HAREnd() *HAR {
-	har := session.har
-	session.har = nil
-	return har
-}
-
 func (session *Session) listener() {
 	var method string
 	for e := range session.incomingEvent {
 
 		method = e["method"].(string)
 		session.rw.RLock()
-		cb, has := session.callbacks[method]
+		cbs, has := session.callbacks[method]
 		session.rw.RUnlock()
 		if has {
-			cb(e["params"].(Params))
+			for _, c := range cbs {
+				if c != nil {
+					c(e["params"].(Params))
+				}
+			}
 		}
 
 		switch method {
@@ -296,23 +263,6 @@ func (session *Session) listener() {
 				session.client.deleteSession(session.sessionID)
 				return
 			}
-		case "Page.loadEventFired",
-			"Page.domContentEventFired",
-			"Page.frameStartedLoading",
-			"Page.frameAttached",
-			"Page.navigatedWithinDocument",
-			"Network.requestWillBeSent",
-			"Network.requestServedFromCache",
-			"Network.dataReceived",
-			"Network.responseReceived",
-			"Network.resourceChangedPriority",
-			"Network.loadingFinished",
-			"Network.loadingFailed":
-			if session.har != nil {
-				if err := session.eventHar(method, e["params"]); err != nil {
-					// log.Printf(err.Error())
-				}
-			}
 		}
 	}
 }
@@ -335,18 +285,17 @@ func (session *Session) blockingSend(method string, params *Params) (MessageResu
 
 // Subscribe subscribe to CDP event
 func (session *Session) Subscribe(method string, callback func(params Params)) (unsubscribe func()) {
-	session.rw.RLock()
-	_, has := session.callbacks[method]
-	session.rw.RUnlock()
-	if has {
-		panic(`listener for event ` + method + ` already exist`)
-	}
 	session.rw.Lock()
-	session.callbacks[method] = callback
+	if _, has := session.callbacks[method]; !has {
+		session.callbacks[method] = make([]func(Params), 0)
+	}
+	session.callbacks[method] = append(session.callbacks[method], callback)
+	index := len(session.callbacks[method]) - 1
 	session.rw.Unlock()
+
 	return func() {
 		session.rw.Lock()
-		delete(session.callbacks, method)
+		session.callbacks[method][index] = nil
 		session.rw.Unlock()
 	}
 }

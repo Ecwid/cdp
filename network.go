@@ -186,13 +186,11 @@ type CookieParam struct {
 }
 
 // NetworkEnable ...
-func (session *Session) networkEnable() {
+func (session *Session) NetworkEnable() error {
 	_, err := session.blockingSend("Network.enable", &Params{
 		"maxPostDataSize": 1024,
 	})
-	if err != nil {
-		panic(err)
-	}
+	return err
 }
 
 // ClearBrowserCookies очищает все куки браузера

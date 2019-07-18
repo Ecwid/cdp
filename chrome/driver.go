@@ -40,11 +40,12 @@ func (e *Driver) Session() *cdp.Session {
 
 // ErrDriver фатальная ошибка драйвера
 type ErrDriver struct {
-	string
+	SessionID string
+	Message   string
 }
 
-func (ed ErrDriver) Error() string {
-	return string(ed.string)
+func (e ErrDriver) Error() string {
+	return fmt.Sprintf("sessionID: %s, error: %s", e.SessionID, e.Message)
 }
 
 // NewDriver ...
@@ -64,7 +65,10 @@ func (e *Driver) log(params []interface{}, result []interface{}) {
 
 // Panic ...
 func (e *Driver) Panic(format string, v ...interface{}) {
-	var err = &ErrDriver{fmt.Sprintf(format, v...)}
+	var err = &ErrDriver{
+		SessionID: e.session.ID(),
+		Message:   fmt.Sprintf(format, v...),
+	}
 	if e.PanicInterceptor != nil {
 		e.PanicInterceptor(err)
 	} else {
