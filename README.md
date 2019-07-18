@@ -1,4 +1,4 @@
-# cdp
+# WIP cdp
 Golang client driving Chrome browser using the Chrome DevTools Protocol.
 CDP client has selenium like interface and can be used for any kind of browser automation.
 
