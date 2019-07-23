@@ -325,7 +325,7 @@ func (e *Driver) Type(selector string, text string, keys ...rune) {
 	})
 	e.log([]interface{}{selector, text, keys}, nil)
 	if err != nil {
-		e.Panic("Не могу вписать текст в элемент %s: %#v", selector, err)
+		e.Panic("Не могу вписать текст в элемент %s: %s", selector, err)
 	}
 }
 
@@ -399,6 +399,21 @@ func (e *Driver) TextAll(selector string) []string {
 	return text
 }
 
+// GetRectangle ...
+func (e *Driver) GetRectangle(selector string) *cdp.Rect {
+	var rect *cdp.Rect
+	var err error
+	_ = retry(func() error {
+		rect, err = e.session.GetRectangle(selector)
+		return err
+	})
+	e.log([]interface{}{selector}, []interface{}{rect})
+	if err != nil {
+		e.Panic("GetRectangle(%s) failed with: %s", selector, err)
+	}
+	return rect
+}
+
 // NewTarget ожидает открытие новой вкладки
 func (e *Driver) NewTarget(init func()) string {
 	targetInfo := e.session.TargetCreated()
@@ -414,11 +429,7 @@ func (e *Driver) NewTarget(init func()) string {
 
 // Count число элементов selector в текущем фрейме
 func (e *Driver) Count(selector string) int {
-	var count int
-	_ = retry(func() error {
-		count = e.session.Count(selector)
-		return nil
-	})
+	var count = e.session.Count(selector)
 	e.log([]interface{}{selector}, []interface{}{count})
 	return count
 }

@@ -194,7 +194,6 @@ func (session *Session) Text(selector string) ([]string, error) {
 	return array, nil
 }
 
-// 	GetRectangle(string) error
 // 	GetOptions(string) ([]string, error)
 
 // SetAttr ...
@@ -223,6 +222,30 @@ func (session *Session) GetAttr(selector string, attr string) (string, error) {
 		return "", err
 	}
 	return value.Value.(string), nil
+}
+
+// GetRectangle ...
+func (session *Session) GetRectangle(selector string) (*Rect, error) {
+	element, err := session.findElement(selector)
+	if err != nil {
+		return nil, err
+	}
+	defer session.release(element)
+	q, err := session.getContentQuads(0, element)
+	if err != nil {
+		if err.Error() == `Could not compute content quads.` {
+			// element not visible
+			return nil, nil
+		}
+		return nil, err
+	}
+	rect := &Rect{
+		X:      q[0],
+		Y:      q[1],
+		Width:  q[2] - q[0],
+		Height: q[7] - q[1],
+	}
+	return rect, nil
 }
 
 // GetComputedStyle ...
