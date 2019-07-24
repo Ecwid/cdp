@@ -71,7 +71,7 @@ func (session *Session) createTarget(url string) (string, error) {
 
 func (session *Session) closeTarget(targetID string) (bool, error) {
 	msg, err := session.blockingSend("Target.closeTarget", &Params{"targetId": targetID})
-	// event 'Target.targetDestroyed' was received early than message
+	// event 'Target.targetDestroyed' was received early than message response
 	if err == ErrSessionClosed {
 		return true, nil
 	}

@@ -7,13 +7,13 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// Params параметры CDP метода
+// Params parameters of CDP method
 type Params = map[string]interface{}
 
-// MessageResult результат вызова метода
+// MessageResult message result
 type MessageResult = map[string]interface{}
 
-// MessageReq структура CDP запроса
+// MessageReq CDP webSocket request
 type MessageReq struct {
 	ID        int64  `json:"id"`
 	Method    string `json:"method"`
@@ -36,7 +36,7 @@ type Client struct {
 	sessions  map[string]*Session
 }
 
-// CreateCDPClient открывает новую сессию с браузером
+// CreateCDPClient create new client to interact with browser by CDP
 func CreateCDPClient(webSocketURL string) (*Client, error) {
 	conn, _, err := websocket.DefaultDialer.Dial(webSocketURL, nil)
 	if err != nil {
@@ -44,8 +44,8 @@ func CreateCDPClient(webSocketURL string) (*Client, error) {
 	}
 	client := &Client{
 		conn:     conn,
-		send:     make(chan MessageReq),              /* Канал для отправки сообщений по протоколу */
-		recv:     make(map[int64]chan MessageResult), /* Канал для для получения ответа на сообщение */
+		send:     make(chan MessageReq),              /* channel for message sending */
+		recv:     make(map[int64]chan MessageResult), /* channel for receive message response */
 		sessions: make(map[string]*Session),
 		events:   make(chan MessageResult, 1),
 		close:    make(chan bool),
@@ -62,7 +62,9 @@ func (client *Client) deleteSession(sessionID string) {
 	client.mutex.Unlock()
 }
 
-// NewSession ...
+// NewSession open new session on page target targetID
+// if targetID == nil then client will find already opened targets with page type
+// if no one target exists - client will create a new one
 func (client *Client) NewSession(targetID *string) *Session {
 	session := newSession(client)
 
@@ -119,7 +121,7 @@ func (client *Client) sendMethod(sessionID string, method string, params *Params
 	return client.recv[client.messageID]
 }
 
-// Close ...
+// Close close session
 func (client *Client) Close() {
 	close(client.close)
 }

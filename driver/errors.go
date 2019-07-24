@@ -10,5 +10,9 @@ type ErrDriver struct {
 }
 
 func (e ErrDriver) Error() string {
-	return fmt.Sprintf("sessionID: %s\n error: %s\n\tcause: %s", e.SessionID, e.Message, e.Cause.Error())
+	cause := ""
+	if e.Cause != nil {
+		cause = fmt.Sprintf("\n\tcause: %s", e.Cause.Error())
+	}
+	return fmt.Sprintf("sessionID: %s\nerror: %s%s", e.SessionID, e.Message, cause)
 }

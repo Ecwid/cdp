@@ -193,14 +193,14 @@ func (session *Session) NetworkEnable() error {
 	return err
 }
 
-// ClearBrowserCookies очищает все куки браузера
+// ClearBrowserCookies ...
 func (session *Session) ClearBrowserCookies() {
 	if _, err := session.blockingSend("Network.clearBrowserCookies", &Params{}); err != nil {
 		panic(err)
 	}
 }
 
-// SetCookies устанавливает куки браузера
+// SetCookies ...
 func (session *Session) SetCookies(cookies ...CookieParam) {
 	_, err := session.blockingSend("Network.setCookies", &Params{"cookies": cookies})
 	if err != nil {
@@ -216,12 +216,16 @@ func (session *Session) SetExtraHTTPHeaders(headers map[string]string) {
 	}
 }
 
-// AddNetworkInterceptor добавляем Interceptor для запросов браузера по шаблону RequestPattern
-func (session *Session) AddNetworkInterceptor(pattern *RequestPattern, processRequest func(request *RequestIntercepted) *ContinueInterceptedRequest) error {
-	if _, err := session.blockingSend("Network.enable", &Params{}); err != nil {
-		return err
+// AddNetworkInterceptor add network interceptor
+func (session *Session) AddNetworkInterceptor(
+	pattern *RequestPattern,
+	processRequest func(request *RequestIntercepted) *ContinueInterceptedRequest) (unsubscribe func(), err error) {
+
+	if _, err = session.blockingSend("Network.enable", &Params{}); err != nil {
+		return nil, err
 	}
-	session.Subscribe("Network.requestIntercepted", func(msg Params) {
+
+	unsubscribe = session.Subscribe("Network.requestIntercepted", func(msg Params) {
 		go func() {
 			request := &RequestIntercepted{}
 			unmarshal(msg, request)
@@ -230,7 +234,7 @@ func (session *Session) AddNetworkInterceptor(pattern *RequestPattern, processRe
 			_ = session.continueInterceptedRequest(continueRequest)
 		}()
 	})
-	return session.setRequestInterception(pattern)
+	return unsubscribe, session.setRequestInterception(pattern)
 }
 
 func (session *Session) setRequestInterception(patterns ...*RequestPattern) error {

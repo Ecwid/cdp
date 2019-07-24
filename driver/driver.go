@@ -240,7 +240,7 @@ func (e *Driver) GetSelectedText(selector string) []string {
 // Click click at visible selector
 func (e *Driver) Click(selector string) {
 	err := retry(func() error {
-		return e.session.Click(selector, nil)
+		return e.session.Click(selector)
 	})
 	e.log([]interface{}{selector}, nil)
 	if err != nil {

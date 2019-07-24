@@ -25,7 +25,7 @@ func (session *Session) findElement(selector string) (string, error) {
 func (session *Session) findElements(selector string) ([]string, error) {
 	array, err := session.Evaluate(`document.querySelectorAll("`+selector+`")`, session.contextID)
 	if array == nil || array.Description == "NodeList(0)" {
-		return nil, errors.New(`Elements ` + selector + ` not found in current frame ` + session.frameID)
+		return nil, errors.New(`no one element ` + selector + ` found in frame ` + session.frameID)
 	}
 	descriptor, err := session.getProperties(array.ObjectID)
 	if err != nil {
@@ -92,7 +92,7 @@ func (session *Session) clickablePoint(objectID string) (x float64, y float64, e
 }
 
 // Click ...
-func (session *Session) Click(selector string, predicate func() bool) error {
+func (session *Session) Click(selector string) error {
 	// find element for click at
 	element, err := session.findElement(selector)
 	if err != nil {
@@ -119,16 +119,9 @@ func (session *Session) Click(selector string, predicate func() bool) error {
 	// check to click happens
 	fired, err := session.callFunctionOn(element, atom.IsEventFired)
 	if err != nil || fired.bool() {
-		// another one condition to make sure click happens
-		if predicate != nil {
-			if predicate() {
-				return nil
-			}
-			return errors.New(`click predicate not fulfilled`)
-		}
 		return nil
 	}
-	return errors.New(`click not fulfilled`)
+	return errors.New("click not confirmed")
 }
 
 // Type ...
@@ -194,8 +187,6 @@ func (session *Session) Text(selector string) ([]string, error) {
 	return array, nil
 }
 
-// 	GetOptions(string) ([]string, error)
-
 // SetAttr ...
 func (session *Session) SetAttr(selector string, attr string, value string) error {
 	element, err := session.findElement(selector)
@@ -234,7 +225,7 @@ func (session *Session) GetRectangle(selector string) (*Rect, error) {
 	q, err := session.getContentQuads(0, element)
 	if err != nil {
 		if err.Error() == `Could not compute content quads.` {
-			// element not visible
+			// element not visible and dimension can't be got
 			return nil, nil
 		}
 		return nil, err
@@ -303,11 +294,11 @@ func (session *Session) Select(selector string, values ...string) error {
 		return err
 	}
 	if "SELECT" != node.NodeName {
-		return errors.New(`Element ` + selector + ` should be SELECT`)
+		return errors.New(`node ` + selector + ` require has type SELECT`)
 	}
 	has, err := session.callFunctionOn(element, atom.SelectHasOptions, values)
 	if !has.bool() {
-		return errors.New(`SELECT ` + selector + ` doesn't has options with values ` + strings.Join(values, ","))
+		return errors.New(`select ` + selector + ` doesn't has options with values ` + strings.Join(values, ","))
 	}
 	_, err = session.callFunctionOn(element, atom.Select, values)
 	return err

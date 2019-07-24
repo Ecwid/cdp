@@ -98,18 +98,6 @@ func (session *Session) getFrameTree() (*FrameTree, error) {
 	return tree, nil
 }
 
-func (tree *FrameTree) get(id string) *Frame {
-	if tree.Frame.ID == id {
-		return tree.Frame
-	}
-	for _, f := range tree.ChildFrames {
-		if child := f.get(id); child != nil {
-			return child
-		}
-	}
-	return nil
-}
-
 func (session *Session) setLifecycleEventsEnabled(enabled bool) error {
 	_, err := session.blockingSend("Page.setLifecycleEventsEnabled", &Params{"enabled": enabled})
 	return err

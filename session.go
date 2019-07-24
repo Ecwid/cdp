@@ -11,16 +11,13 @@ import (
 // NavigationTimeout - navigation timeout
 var NavigationTimeout = time.Second * 40
 
-// NetworkTimeout - network timeout
-var NetworkTimeout = time.Second * 10
-
 // WebSocketTimeout - web socket response timeout
 var WebSocketTimeout = time.Second * 100
 
 // ErrSessionClosed current session (target) already closed
 var ErrSessionClosed = errors.New(`Session closed`)
 
-// Session CDP сессия
+// Session CDP session
 type Session struct {
 	rw            sync.RWMutex
 	client        *Client
@@ -28,7 +25,7 @@ type Session struct {
 	targetID      string
 	contextID     int64
 	frameID       string
-	incomingEvent chan MessageResult // очередь событий на обработку от websocket клиента
+	incomingEvent chan MessageResult // queue of incoming events from browser
 	callbacks     map[string][]func(Params)
 	closed        chan bool
 }
@@ -44,7 +41,7 @@ func newSession(client *Client) *Session {
 	return session
 }
 
-// Client ...
+// Client get client associated with this session
 func (session *Session) Client() *Client {
 	return session.client
 }
@@ -73,7 +70,7 @@ func (session *Session) ID() string {
 	return session.sessionID
 }
 
-// SwitchToFrame переключается на фрейм элемента selector
+// SwitchToFrame switch context to frame
 func (session *Session) SwitchToFrame(selector string) error {
 	el, err := session.findElement(selector)
 	if err != nil {
@@ -90,12 +87,12 @@ func (session *Session) SwitchToFrame(selector string) error {
 	return nil
 }
 
-// MainFrame переключается на главный фрейм страницы
+// MainFrame switch context to main frame
 func (session *Session) MainFrame() {
 	session.switchContext(session.targetID)
 }
 
-// Navigate ...
+// Navigate navigate to
 func (session *Session) Navigate(urlStr string) error {
 	eventFired := make(chan bool)
 	unsubscribe := session.Subscribe("Page.loadEventFired", func(params Params) {
@@ -162,7 +159,7 @@ func (session *Session) GetScreenshot(format string, quality int8, fullPage bool
 	return raw, nil
 }
 
-// TargetCreated ...
+// TargetCreated subscribe to targetCreated event
 func (session *Session) TargetCreated() chan *TargetInfo {
 	message := make(chan *TargetInfo)
 	var unsubscribe func()

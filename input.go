@@ -2,18 +2,13 @@ package cdp
 
 import "time"
 
+// Input events
 const (
-	// DispatchKeyEventChar ..
-	DispatchKeyEventChar = "char"
-	// DispatchKeyEventKeyDown нажимаем кнопку
-	DispatchKeyEventKeyDown = "keyDown"
-	// DispatchKeyEventKeyUp отпускаем кнопку
-	DispatchKeyEventKeyUp = "keyUp"
-	// DispatchMouseEventMoved перемещение указателя мыши
-	DispatchMouseEventMoved = "mouseMoved"
-	// DispatchMouseEventPressed нажатие кнопки мыши
-	DispatchMouseEventPressed = "mousePressed"
-	// DispatchMouseEventReleased отпускаем кнопку мыши
+	DispatchKeyEventChar       = "char"
+	DispatchKeyEventKeyDown    = "keyDown"
+	DispatchKeyEventKeyUp      = "keyUp"
+	DispatchMouseEventMoved    = "mouseMoved"
+	DispatchMouseEventPressed  = "mousePressed"
 	DispatchMouseEventReleased = "mouseReleased"
 )
 
