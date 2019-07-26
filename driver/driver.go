@@ -309,10 +309,13 @@ func (e *Driver) Type(selector string, text string, keys ...rune) {
 		}
 		var gettext []string
 		gettext, err = e.session.Text(selector)
+		if err != nil {
+			return err
+		}
 		if text != gettext[0] {
 			return fmt.Errorf("not expected text was typed exp: `%s`, was: `%s`", text, gettext[0])
 		}
-		return err
+		return nil
 	})
 	e.log([]interface{}{selector, text, keys}, nil)
 	if err != nil {

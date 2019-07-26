@@ -12,7 +12,7 @@ import (
 var NavigationTimeout = time.Second * 40
 
 // WebSocketTimeout - web socket response timeout
-var WebSocketTimeout = time.Second * 100
+var WebSocketTimeout = time.Minute * 3
 
 // ErrSessionClosed current session (target) already closed
 var ErrSessionClosed = errors.New(`Session closed`)
