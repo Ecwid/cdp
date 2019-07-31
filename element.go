@@ -23,6 +23,7 @@ func (session *Session) findElement(selector string) (string, error) {
 }
 
 func (session *Session) findElements(selector string) ([]string, error) {
+	selector = strings.ReplaceAll(selector, `"`, `\"`)
 	array, err := session.Evaluate(`document.querySelectorAll("`+selector+`")`, session.contextID)
 	if array == nil || array.Description == "NodeList(0)" {
 		return nil, errors.New(`no one element ` + selector + ` found in frame ` + session.frameID)
