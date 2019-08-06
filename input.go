@@ -49,13 +49,6 @@ func (session *Session) insertText(text string) error {
 	_, err := session.blockingSend("Input.insertText", &Params{"text": text})
 	return err
 }
-
-func (session *Session) mouseClick(x float64, y float64) {
-	session.dispatchMouseEvent(x, y, DispatchMouseEventMoved, "none")
-	session.dispatchMouseEvent(x, y, DispatchMouseEventPressed, "left")
-	session.dispatchMouseEvent(x, y, DispatchMouseEventReleased, "left")
-}
-
 func (session *Session) dispatchMouseEvent(x float64, y float64, eventType string, button string) {
 	_, _ = session.blockingSend("Input.dispatchMouseEvent", &Params{
 		"type":       eventType,

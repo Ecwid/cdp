@@ -8,6 +8,12 @@ import (
 	"github.com/ecwid/cdp/atom"
 )
 
+var (
+	errElementNotDisplayed = errors.New("element not rendered or overlapped")
+	errElementOverlapped   = errors.New("element overlapped")
+	errClickNotConfirmed   = errors.New("click not confirmed")
+)
+
 func (session *Session) release(elements ...string) {
 	for _, e := range elements {
 		_ = session.releaseObject(e)
@@ -60,7 +66,7 @@ func (session *Session) Upload(selector string, files ...string) error {
 func (session *Session) clickablePoint(objectID string) (x float64, y float64, e error) {
 	rect, err := session.getContentQuads(0, objectID)
 	if err != nil {
-		return -1, -1, errors.New("element not rendered or overlapped")
+		return -1, -1, errElementNotDisplayed
 	}
 	_ = session.highlightQuad(rect, &rgba{R: 255, G: 1, B: 1})
 	x, y = rect.middle()
@@ -87,7 +93,7 @@ func (session *Session) clickablePoint(objectID string) (x float64, y float64, e
 	// Если клик принимает другой элемент, либо элемент не родитель ожидаемого, то выбросим ошибк
 	clickable, err := session.callFunctionOn(objectID, atom.IsClickableAt, cX, cY)
 	if err != nil || !clickable.bool() {
-		return x, y, errors.New(`not clickable element`)
+		return x, y, errElementOverlapped
 	}
 	return x, y, nil
 }
@@ -116,13 +122,41 @@ func (session *Session) Click(selector string) error {
 	if err != nil {
 		return err
 	}
-	session.mouseClick(x, y)
+
+	session.dispatchMouseEvent(x, y, DispatchMouseEventMoved, "none")
+	session.dispatchMouseEvent(x, y, DispatchMouseEventPressed, "left")
+	session.dispatchMouseEvent(x, y, DispatchMouseEventReleased, "left")
+
 	// check to click happens
 	fired, err := session.callFunctionOn(element, atom.IsEventFired)
 	if err != nil || fired.bool() {
 		return nil
 	}
-	return errors.New("click not confirmed")
+	return errClickNotConfirmed
+}
+
+// HoverXY move mouse at (x, y)
+func (session *Session) HoverXY(x, y float64) {
+	session.dispatchMouseEvent(x, y, DispatchMouseEventMoved, "none")
+}
+
+// Hover hover mouse on element
+func (session *Session) Hover(selector string) error {
+	objectID, err := session.findElement(selector)
+	if err != nil {
+		return err
+	}
+	defer session.release(objectID)
+	if _, err = session.callFunctionOn(objectID, atom.ScrollIntoView); err != nil {
+		return err
+	}
+	session.dispatchMouseEvent(0, 0, DispatchMouseEventMoved, "none")
+	q, err := session.getContentQuads(0, objectID)
+	if err != nil {
+		return errElementNotDisplayed
+	}
+	session.HoverXY(q.middle())
+	return nil
 }
 
 // Type ...

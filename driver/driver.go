@@ -415,6 +415,17 @@ func (e *Driver) GetRectangle(selector string) *cdp.Rect {
 	return rect
 }
 
+// Hover mouse hover on element
+func (e *Driver) Hover(selector string) {
+	err := retry(func() error {
+		return e.session.Hover(selector)
+	})
+	e.log([]interface{}{selector}, []interface{}{})
+	if err != nil {
+		e.Panic(err, "hover on element `%s` failed", selector)
+	}
+}
+
 // NewTarget call init and waiting for new target created
 func (e *Driver) NewTarget(init func()) string {
 	targetInfo := e.session.TargetCreated()
