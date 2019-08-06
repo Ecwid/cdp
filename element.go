@@ -12,6 +12,7 @@ var (
 	errElementNotDisplayed = errors.New("element not rendered or overlapped")
 	errElementOverlapped   = errors.New("element overlapped")
 	errClickNotConfirmed   = errors.New("click not confirmed")
+	errTypeIsNotString     = errors.New("object type is not string")
 )
 
 func (session *Session) release(elements ...string) {
@@ -200,7 +201,7 @@ func (session *Session) textContent(objectID string) (string, error) {
 		return "", err
 	}
 	if obj.Type != "string" {
-		return "", errors.New(`innerText not defined`)
+		return "", errTypeIsNotString
 	}
 	return obj.Value.(string), nil
 }
@@ -247,6 +248,9 @@ func (session *Session) GetAttr(selector string, attr string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if value.Type != "string" {
+		return "", errTypeIsNotString
+	}
 	return value.Value.(string), nil
 }
 
@@ -286,7 +290,7 @@ func (session *Session) GetComputedStyle(selector string, style string) (string,
 		return "", err
 	}
 	if computedStyle.Type != "string" {
-		return "", errors.New("style `" + style + "` not string: " + computedStyle.Type)
+		return "", errTypeIsNotString
 	}
 	return computedStyle.Value.(string), nil
 }
