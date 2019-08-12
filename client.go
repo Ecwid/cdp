@@ -2,6 +2,7 @@ package cdp
 
 import (
 	"log"
+	"strings"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -123,6 +124,7 @@ func (client *Client) sendMethod(sessionID string, method string, params *Params
 
 // Close close session
 func (client *Client) Close() {
+	client.sendMethod("", "Browser.close", &Params{})
 	close(client.close)
 }
 
@@ -154,6 +156,9 @@ func (client *Client) broadcast() {
 		message = make(MessageResult)
 		err = client.conn.ReadJSON(&message)
 		if err != nil {
+			if strings.Contains(err.Error(), "use of closed network connection") {
+				return
+			}
 			log.Printf(err.Error())
 			break
 		}

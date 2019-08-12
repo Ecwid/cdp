@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -16,7 +17,7 @@ import (
 // Chrome браузер
 type Chrome struct {
 	Client *cdp.Client
-	cancel context.CancelFunc
+	cancel func()
 }
 
 // Close закрывает хром
@@ -96,9 +97,15 @@ func New(userFlags ...string) (*Chrome, error) {
 		flags = append(flags, "--no-sandbox")
 	}
 
-	var background context.Context
-	background, chrome.cancel = context.WithCancel(context.Background())
-	cmd := exec.CommandContext(background, path, flags...)
+	cmd := exec.CommandContext(context.Background(), path, flags...)
+	chrome.cancel = func() {
+		state, _ := cmd.Process.Wait()
+		if !state.Exited() {
+			if err := cmd.Process.Kill(); err != nil {
+				log.Print(err)
+			}
+		}
+	}
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		return nil, err

@@ -3,6 +3,7 @@ package cdp
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
 	"sync"
 	"time"
@@ -276,7 +277,7 @@ func (session *Session) blockingSend(method string, params *Params) (MessageResu
 	case <-session.closed:
 		return nil, ErrSessionClosed
 	case <-time.After(WebSocketTimeout):
-		panic(`websocket message response reached timeout`)
+		panic(fmt.Sprintf("websocket response reached timeout %s for %s -> %+v", WebSocketTimeout.String(), method, params))
 	}
 }
 
