@@ -426,6 +426,15 @@ func (e *Driver) Hover(selector string) {
 	}
 }
 
+// SendKeys send keyboard keys to focused element
+func (e *Driver) SendKeys(key ...rune) {
+	err := e.session.SendKeys(key...)
+	e.log([]interface{}{key}, []interface{}{})
+	if err != nil {
+		e.Panic(err, "send keys failed")
+	}
+}
+
 // NewTarget call init and waiting for new target created
 func (e *Driver) NewTarget(init func()) string {
 	targetInfo := e.session.TargetCreated()

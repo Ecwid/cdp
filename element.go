@@ -188,8 +188,18 @@ func (session *Session) Type(selector string, text string, key ...rune) error {
 	// send keyboard key after some pause
 	if key != nil {
 		time.Sleep(time.Millisecond * 200)
-		for _, k := range key {
-			session.sendRune(k)
+		return session.SendKeys(key...)
+	}
+	return nil
+}
+
+// SendKeys send keyboard keys to focused element
+func (session *Session) SendKeys(key ...rune) error {
+	var err error
+	for _, k := range key {
+		err = session.sendRune(k)
+		if err != nil {
+			return err
 		}
 	}
 	return nil

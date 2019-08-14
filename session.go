@@ -96,7 +96,7 @@ func (session *Session) MainFrame() {
 // Navigate navigate to
 func (session *Session) Navigate(urlStr string) error {
 	eventFired := make(chan bool)
-	unsubscribe := session.Subscribe("Page.loadEventFired", func(params Params) {
+	unsubscribe := session.Subscribe("Page.domContentEventFired", func(params Params) {
 		eventFired <- true
 	})
 	defer unsubscribe()

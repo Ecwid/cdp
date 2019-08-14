@@ -12,21 +12,25 @@ const (
 	DispatchMouseEventReleased = "mouseReleased"
 )
 
-func (session *Session) sendRune(c rune) {
-	_, _ = session.blockingSend("Input.dispatchKeyEvent", &Params{
+func (session *Session) sendRune(c rune) error {
+	_, err := session.blockingSend("Input.dispatchKeyEvent", &Params{
 		"type":                  DispatchKeyEventKeyDown,
 		"windowsVirtualKeyCode": int(c),
 		"nativeVirtualKeyCode":  int(c),
 		"unmodifiedText":        string(c),
 		"text":                  string(c),
 	})
-	_, _ = session.blockingSend("Input.dispatchKeyEvent", &Params{
+	if err != nil {
+		return err
+	}
+	_, err = session.blockingSend("Input.dispatchKeyEvent", &Params{
 		"type":                  DispatchKeyEventKeyUp,
 		"windowsVirtualKeyCode": int(c),
 		"nativeVirtualKeyCode":  int(c),
 		"unmodifiedText":        string(c),
 		"text":                  string(c),
 	})
+	return err
 }
 
 func (session *Session) dispatchKeyEvent(text string) error {
