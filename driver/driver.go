@@ -426,6 +426,23 @@ func (e *Driver) Hover(selector string) {
 	}
 }
 
+// CallScriptOn evaluate javascript code on element
+// executed as function() { `script` }, for access to element use `this`
+// for example script = `this.innerText = "test"`
+func (e *Driver) CallScriptOn(selector, script string) interface{} {
+	var result interface{}
+	var err error
+	retry(func() error {
+		result, err = e.session.CallScriptOn(selector, script)
+		return err
+	})
+	e.log([]interface{}{selector, script}, []interface{}{result})
+	if err != nil {
+		e.Panic(err, "call script on element `%s` failed", selector)
+	}
+	return result
+}
+
 // SendKeys send keyboard keys to focused element
 func (e *Driver) SendKeys(key ...rune) {
 	err := e.session.SendKeys(key...)

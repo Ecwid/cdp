@@ -194,6 +194,22 @@ func (session *Session) Script(code string) (interface{}, error) {
 	return result.Value, nil
 }
 
+// CallScriptOn evaluate javascript code on element
+// executed as function() { `script` }, for access to element use `this`
+// for example script = `this.innerText = "test"`
+func (session *Session) CallScriptOn(selector, script string) (interface{}, error) {
+	element, err := session.findElement(selector)
+	if err != nil {
+		return nil, err
+	}
+	defer session.release(element)
+	result, err := session.callFunctionOn(element, `function(){`+script+`}`)
+	if err != nil {
+		return "", err
+	}
+	return result.Value, nil
+}
+
 // URL get current tab's url
 func (session *Session) URL() (string, error) {
 	history, err := session.getNavigationHistory()
