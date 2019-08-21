@@ -355,6 +355,23 @@ func (e *Driver) Exist(selector ...string) string {
 	return exist
 }
 
+// Displayed waiting for selector displayed
+func (e *Driver) Displayed(selector string) {
+	err := retry(func() error {
+		v, err := e.session.IsDisplayed(selector)
+		if err != nil {
+			return err
+		}
+		if v {
+			return nil
+		}
+		return errors.New("element not displayed")
+	})
+	if err != nil {
+		e.Panic(err, "element `%s` not displayed", selector)
+	}
+}
+
 // NotExist waiting for disappear selector
 func (e *Driver) NotExist(selector string) {
 	e.Predicate(selector+" have to disappear", func() bool {

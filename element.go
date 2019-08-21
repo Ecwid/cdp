@@ -136,6 +136,26 @@ func (session *Session) Click(selector string) error {
 	return errClickNotConfirmed
 }
 
+// IsDisplayed is element visible (by checking clickability)
+func (session *Session) IsDisplayed(selector string) (bool, error) {
+	objectID, err := session.findElement(selector)
+	if err != nil {
+		return false, err
+	}
+	defer session.release(objectID)
+	if _, err = session.callFunctionOn(objectID, atom.ScrollIntoView); err != nil {
+		return false, err
+	}
+	_, _, err = session.clickablePoint(objectID)
+	if err == errElementOverlapped || err == errElementNotDisplayed {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 // HoverXY move mouse at (x, y)
 func (session *Session) HoverXY(x, y float64) {
 	session.dispatchMouseEvent(x, y, DispatchMouseEventMoved, "none")
