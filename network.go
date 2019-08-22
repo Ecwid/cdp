@@ -1,27 +1,5 @@
 package cdp
 
-// RequestPattern https://chromedevtools.github.io/devtools-protocol/tot/Network#type-RequestPattern
-type RequestPattern struct {
-	URLPattern        string `json:"urlPattern"`
-	ResourceType      string `json:"resourceType"`
-	InterceptionStage string `json:"interceptionStage"`
-}
-
-// AuthChallenge https://chromedevtools.github.io/devtools-protocol/tot/Network#type-AuthChallenge
-type AuthChallenge struct {
-	Source string `json:"source"`
-	Origin string `json:"origin"`
-	Scheme string `json:"scheme"`
-	Realm  string `json:"realm"`
-}
-
-// AuthChallengeResponse https://chromedevtools.github.io/devtools-protocol/tot/Network#type-AuthChallengeResponse
-type AuthChallengeResponse struct {
-	Response string `json:"response"`
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
 // Request https://chromedevtools.github.io/devtools-protocol/tot/Network#type-Request
 type Request struct {
 	URL              string                 `json:"url"`
@@ -134,34 +112,6 @@ type Response struct {
 	SecurityState      string                 `json:"securityState"`
 }
 
-// RequestIntercepted https://chromedevtools.github.io/devtools-protocol/tot/Network#event-requestIntercepted
-type RequestIntercepted struct {
-	InterceptionID      string                 `json:"interceptionId"`
-	Request             *Request               `json:"request"`
-	FrameID             string                 `json:"frameId"`
-	ResourceType        string                 `json:"resourceType"`
-	IsNavigationRequest bool                   `json:"isNavigationRequest"`
-	IsDownload          bool                   `json:"isDownload"`
-	RedirectURL         string                 `json:"redirectUrl"`
-	AuthChallenge       *AuthChallenge         `json:"authChallenge"`
-	ResponseErrorReason string                 `json:"responseErrorReason"`
-	ResponseStatusCode  int64                  `json:"responseStatusCode"`
-	ResponseHeaders     map[string]interface{} `json:"responseHeaders"`
-	RequestID           string                 `json:"requestId"`
-}
-
-// ContinueInterceptedRequest https://chromedevtools.github.io/devtools-protocol/tot/Network#method-continueInterceptedRequest
-type ContinueInterceptedRequest struct {
-	InterceptionID        string                 `json:"interceptionId"`
-	ErrorReason           string                 `json:"errorReason,omitempty"`
-	RawResponse           string                 `json:"rawResponse,omitempty"`
-	URL                   string                 `json:"url,omitempty"`
-	Method                string                 `json:"method,omitempty"`
-	PostData              string                 `json:"postData,omitempty"`
-	Headers               map[string]interface{} `json:"headers,omitempty"`
-	AuthChallengeResponse *AuthChallengeResponse `json:"authChallengeResponse,omitempty"`
-}
-
 // LoadingFailed https://chromedevtools.github.io/devtools-protocol/tot/Network#event-loadingFailed
 type LoadingFailed struct {
 	RequestID     string  `json:"requestId"`
@@ -214,39 +164,4 @@ func (session *Session) SetExtraHTTPHeaders(headers map[string]string) {
 	if err != nil {
 		panic(err)
 	}
-}
-
-// AddNetworkInterceptor add network interceptor
-func (session *Session) AddNetworkInterceptor(
-	pattern *RequestPattern,
-	processRequest func(request *RequestIntercepted) *ContinueInterceptedRequest) (unsubscribe func(), err error) {
-
-	if _, err = session.blockingSend("Network.enable", &Params{}); err != nil {
-		return nil, err
-	}
-
-	unsubscribe = session.Subscribe("Network.requestIntercepted", func(msg Params) {
-		go func() {
-			request := &RequestIntercepted{}
-			unmarshal(msg, request)
-			continueRequest := processRequest(request)
-			continueRequest.InterceptionID = request.InterceptionID
-			_ = session.continueInterceptedRequest(continueRequest)
-		}()
-	})
-	return unsubscribe, session.setRequestInterception(pattern)
-}
-
-func (session *Session) setRequestInterception(patterns ...*RequestPattern) error {
-	_, err := session.blockingSend("Network.setRequestInterception", &Params{
-		"patterns": patterns,
-	})
-	return err
-}
-
-func (session *Session) continueInterceptedRequest(req *ContinueInterceptedRequest) error {
-	param := &Params{}
-	unmarshal(req, param)
-	_, err := session.blockingSend("Network.continueInterceptedRequest", param)
-	return err
 }
