@@ -144,20 +144,16 @@ func (session *Session) Close() (bool, error) {
 }
 
 // GetScreenshot get screen of current page
-func (session *Session) GetScreenshot(format string, quality int8, fullPage bool) ([]byte, error) {
+func (session *Session) GetScreenshot(format string, quality int8, clip *Viewport, fullPage bool) ([]byte, error) {
 	if fullPage {
-		lm, err := session.getLayoutMetrics()
+		view, err := session.getLayoutMetrics()
 		if err != nil {
 			return nil, err
 		}
 		defer session.clearDeviceMetricsOverride()
-		session.setDeviceMetricsOverride(int64(math.Ceil(lm.ContentSize.Width)), int64(math.Ceil(lm.ContentSize.Height)), 1)
+		session.setDeviceMetricsOverride(int64(math.Ceil(view.ContentSize.Width)), int64(math.Ceil(view.ContentSize.Height)), 1)
 	}
-	raw, err := session.captureScreenshot(format, quality)
-	if err != nil {
-		return nil, err
-	}
-	return raw, nil
+	return session.captureScreenshot(format, quality, clip)
 }
 
 // TargetCreated subscribe to targetCreated event
@@ -185,7 +181,7 @@ func (session *Session) IsClosed() bool {
 	}
 }
 
-// Script evaluate javascript code at context of web page
+// Script evaluate javascript code at context of web page synchronously
 func (session *Session) Script(code string) (interface{}, error) {
 	result, err := session.Evaluate(code, 0)
 	if err != nil {

@@ -57,6 +57,15 @@ type LayoutViewport struct {
 	ClientHeight int64 `json:"clientHeight"`
 }
 
+// Viewport https://chromedevtools.github.io/devtools-protocol/tot/Page#type-Viewport
+type Viewport struct {
+	X      float64 `json:"x"`
+	Y      float64 `json:"y"`
+	Width  float64 `json:"width"`
+	Height float64 `json:"height"`
+	Scale  float64 `json:"scale"`
+}
+
 // VisualViewport https://chromedevtools.github.io/devtools-protocol/tot/Page#type-VisualViewport
 type VisualViewport struct {
 	OffsetX      float64 `json:"offsetX"`
@@ -178,12 +187,16 @@ func (session *Session) getNavigationHistory() (*navigationHistory, error) {
 	return history, nil
 }
 
-func (session *Session) captureScreenshot(format string, quality int8) ([]byte, error) {
-	msg, err := session.blockingSend("Page.captureScreenshot", &Params{
+func (session *Session) captureScreenshot(format string, quality int8, clip *Viewport) ([]byte, error) {
+	p := Params{
 		"format":      format,
 		"quality":     quality,
 		"fromSurface": true,
-	})
+	}
+	if clip != nil {
+		p["clip"] = clip
+	}
+	msg, err := session.blockingSend("Page.captureScreenshot", &p)
 	if err != nil {
 		return nil, err
 	}
