@@ -16,12 +16,6 @@ var DriverMaxRetry = time.Second * 60
 // DriverRetryDelay specifies delay between retries
 var DriverRetryDelay = time.Millisecond * 500
 
-// Screenshot image types
-const (
-	PNG  = "png"
-	JPEG = "jpeg"
-)
-
 // Cookie alias for CDP Cookie
 type Cookie = cdp.CookieParam
 
@@ -100,7 +94,7 @@ func (e *Driver) Close() {
 }
 
 // GetScreenshot capture screen of current page with `format` and `quality`
-func (e *Driver) GetScreenshot(format string, quality int8, full bool) []byte {
+func (e *Driver) GetScreenshot(format cdp.ImageFormat, quality int8, full bool) []byte {
 	img, _ := e.session.GetScreenshot(format, quality, nil, full)
 	return img
 }

@@ -4,6 +4,15 @@ import (
 	"encoding/base64"
 )
 
+// ImageFormat Image compression format
+type ImageFormat string
+
+// Image compression format
+const (
+	PNG  ImageFormat = "png"
+	JPEG ImageFormat = "jpeg"
+)
+
 // Frame https://chromedevtools.github.io/devtools-protocol/tot/Page#type-Frame
 type Frame struct {
 	ID             string `json:"id"`
@@ -122,9 +131,9 @@ func (session *Session) getLayoutMetrics() (*LayoutMetrics, error) {
 	return lm, nil
 }
 
-func (session *Session) startScreencast(format string, quality int8, maxWidth int64, maxHeight int64, everyNthFrame int64) error {
+func (session *Session) startScreencast(format ImageFormat, quality int8, maxWidth int64, maxHeight int64, everyNthFrame int64) error {
 	_, err := session.blockingSend("Page.startScreencast", &Params{
-		"format":        format,
+		"format":        string(format),
 		"quality":       quality,
 		"maxWidth":      maxWidth,
 		"maxHeight":     maxHeight,
@@ -187,9 +196,9 @@ func (session *Session) getNavigationHistory() (*navigationHistory, error) {
 	return history, nil
 }
 
-func (session *Session) captureScreenshot(format string, quality int8, clip *Viewport) ([]byte, error) {
+func (session *Session) captureScreenshot(format ImageFormat, quality int8, clip *Viewport) ([]byte, error) {
 	p := Params{
-		"format":      format,
+		"format":      string(format),
 		"quality":     quality,
 		"fromSurface": true,
 	}

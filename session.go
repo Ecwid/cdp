@@ -144,7 +144,7 @@ func (session *Session) Close() (bool, error) {
 }
 
 // GetScreenshot get screen of current page
-func (session *Session) GetScreenshot(format string, quality int8, clip *Viewport, fullPage bool) ([]byte, error) {
+func (session *Session) GetScreenshot(format ImageFormat, quality int8, clip *Viewport, fullPage bool) ([]byte, error) {
 	if fullPage {
 		view, err := session.getLayoutMetrics()
 		if err != nil {
