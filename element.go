@@ -69,7 +69,6 @@ func (session *Session) clickablePoint(objectID string) (x float64, y float64, e
 	if err != nil {
 		return -1, -1, errElementNotDisplayed
 	}
-	_ = session.highlightQuad(rect, &rgba{R: 255, G: 1, B: 1})
 	x, y = rect.middle()
 	/*
 		При определении элемента, по которому произойдет клик по координатам x, y, необходимо учесть случай,
