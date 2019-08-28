@@ -71,6 +71,39 @@ type EvaluatesExpression struct {
 	Timeout               int64  `json:"timeout,omitempty"`
 }
 
+// StackTrace https://chromedevtools.github.io/devtools-protocol/tot/Runtime#type-StackTrace
+type StackTrace struct {
+	Description string        `json:"description"`
+	CallFrames  []*CallFrame  `json:"callFrames"`
+	Parent      *StackTrace   `json:"parent"`
+	ParentID    *StackTraceID `json:"parentId"`
+}
+
+// CallFrame https://chromedevtools.github.io/devtools-protocol/tot/Runtime#type-CallFrame
+type CallFrame struct {
+	FunctionName string `json:"functionName"`
+	ScriptID     string `json:"scriptId"`
+	URL          string `json:"url"`
+	LineNumber   int64  `json:"lineNumber"`
+	ColumnNumber int64  `json:"columnNumber"`
+}
+
+// StackTraceID https://chromedevtools.github.io/devtools-protocol/tot/Runtime#type-StackTraceId
+type StackTraceID struct {
+	ID         string `json:"id"`
+	DebuggerID string `json:"debuggerId"`
+}
+
+// ConsoleAPICalled https://chromedevtools.github.io/devtools-protocol/tot/Runtime#event-consoleAPICalled
+type ConsoleAPICalled struct {
+	Type               string          `json:"type"`
+	Args               []*RemoteObject `json:"args"`
+	ExecutionContextID int64           `json:"executionContextId"`
+	Timestamp          float64         `json:"timestamp"`
+	StackTrace         *StackTrace     `json:"stackTrace"`
+	Context            string          `json:"context"`
+}
+
 func (r *RemoteObject) bool() bool {
 	return r.Type == "boolean" && r.Value.(bool)
 }
