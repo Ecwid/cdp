@@ -73,6 +73,7 @@ func New(userFlags ...string) (*Chrome, error) {
 		"--hide-scrollbars",
 		"--password-store=basic",
 		"--use-mock-keychain",
+		"--enable-automation",
 		"--disable-gpu",
 		"--disable-dev-shm-usage",
 		"--disable-default-apps",
