@@ -89,7 +89,7 @@ type VisualViewport struct {
 
 // LayoutMetrics https://chromedevtools.github.io/devtools-protocol/tot/Page#method-getLayoutMetrics
 type LayoutMetrics struct {
-	LayoutViewport *LayoutMetrics  `json:"layoutViewport"`
+	LayoutViewport *LayoutViewport `json:"layoutViewport"`
 	VisualViewport *VisualViewport `json:"visualViewport"`
 	ContentSize    *Rect           `json:"contentSize"`
 }

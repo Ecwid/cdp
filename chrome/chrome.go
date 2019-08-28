@@ -75,7 +75,6 @@ func New(userFlags ...string) (*Chrome, error) {
 		"--use-mock-keychain",
 		"--disable-gpu",
 		"--disable-dev-shm-usage",
-		"--disable-infobars",
 		"--disable-default-apps",
 		"--disable-extensions",
 		"--disable-browser-side-navigation",
@@ -84,7 +83,6 @@ func New(userFlags ...string) (*Chrome, error) {
 		"--disable-backgrounding-occluded-windows",
 		"--disable-renderer-backgrounding",
 		"--disable-hang-monitor",
-		"--enable-automation",
 		"--enable-features=NetworkService,NetworkServiceInProcess",
 		"--user-data-dir=" + userDataDir,
 	}
