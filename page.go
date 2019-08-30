@@ -173,6 +173,25 @@ func (session *Session) reload() error {
 	return err
 }
 
+// AddScriptToEvaluateOnNewDocument https://chromedevtools.github.io/devtools-protocol/tot/Page#method-addScriptToEvaluateOnNewDocument
+func (session *Session) AddScriptToEvaluateOnNewDocument(source string) (string, error) {
+	msg, err := session.blockingSend("Page.addScriptToEvaluateOnNewDocument", &Params{
+		"source": source,
+	})
+	if err != nil {
+		return "", err
+	}
+	return msg["identifier"].(string), nil
+}
+
+// RemoveScriptToEvaluateOnNewDocument https://chromedevtools.github.io/devtools-protocol/tot/Page#method-removeScriptToEvaluateOnNewDocument
+func (session *Session) RemoveScriptToEvaluateOnNewDocument(identifier string) (string, error) {
+	_, err := session.blockingSend("Page.removeScriptToEvaluateOnNewDocument", &Params{
+		"identifier": identifier,
+	})
+	return "", err
+}
+
 func (session *Session) createIsolatedWorld(frameID string) (executionContextID int64, err error) {
 	msg, err := session.blockingSend("Page.createIsolatedWorld", &Params{
 		"frameId":             frameID,

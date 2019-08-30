@@ -361,6 +361,7 @@ func (e *Driver) Displayed(selector string) {
 		}
 		return errors.New("element not displayed")
 	})
+	e.log([]interface{}{selector}, []interface{}{})
 	if err != nil {
 		e.Panic(err, "element `%s` not displayed", selector)
 	}
