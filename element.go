@@ -12,6 +12,7 @@ var (
 	errElementNotDisplayed = errors.New("element not rendered or overlapped")
 	errElementOverlapped   = errors.New("element overlapped")
 	errClickNotConfirmed   = errors.New("click not confirmed")
+	errHoverNotConfirmed   = errors.New("mouseover not confirmed")
 	errTypeIsNotString     = errors.New("object type is not string")
 )
 
@@ -116,7 +117,6 @@ func (session *Session) Click(selector string) error {
 	if err != nil {
 		return err
 	}
-	session.dispatchMouseEvent(-1, -1, DispatchMouseEventMoved, "none")
 	// calculate click point
 	x, y, err := session.clickablePoint(element)
 	if err != nil {
@@ -175,8 +175,18 @@ func (session *Session) Hover(selector string) error {
 	if err != nil {
 		return errElementNotDisplayed
 	}
+	// add onmouseover event listener on element
+	_, err = session.callFunctionOn(objectID, atom.AddEventFired, "mouseover")
+	if err != nil {
+		return err
+	}
 	session.HoverXY(q.middle())
-	return nil
+	// check to mouseover happens
+	fired, err := session.callFunctionOn(objectID, atom.IsEventFired)
+	if err != nil || fired.bool() {
+		return nil
+	}
+	return errHoverNotConfirmed
 }
 
 // Type ...
@@ -407,4 +417,18 @@ func (session *Session) Count(selector string) int {
 	}
 	defer session.release(elements...)
 	return len(elements)
+}
+
+// Highlight color highlight element at overlay
+func (session *Session) Highlight(selector string) error {
+	element, err := session.findElement(selector)
+	if err != nil {
+		return err
+	}
+	defer session.release(element)
+	q, err := session.getContentQuads(0, element)
+	if err != nil {
+		return err
+	}
+	return session.highlightQuad(q, &rgba{R: 255, G: 1, B: 1})
 }
