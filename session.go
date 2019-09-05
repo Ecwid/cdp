@@ -47,13 +47,11 @@ func (session *Session) Client() *Client {
 	return session.client
 }
 
-func (session *Session) switchContext(frameID string) {
+func (session *Session) switchContext(frameID string) error {
 	session.frameID = frameID
 	var err error
 	session.contextID, err = session.createIsolatedWorld(frameID)
-	if err != nil {
-		panic(err)
-	}
+	return err
 }
 
 func unmarshal(source interface{}, dest interface{}) {
@@ -84,13 +82,12 @@ func (session *Session) SwitchToFrame(selector string) error {
 	if "IFRAME" != node.NodeName {
 		return errors.New(`Selector ` + selector + ` must be IFRAME`)
 	}
-	session.switchContext(node.FrameID)
-	return nil
+	return session.switchContext(node.FrameID)
 }
 
 // MainFrame switch context to main frame
-func (session *Session) MainFrame() {
-	session.switchContext(session.targetID)
+func (session *Session) MainFrame() error {
+	return session.switchContext(session.targetID)
 }
 
 // Navigate navigate to
@@ -115,8 +112,7 @@ func (session *Session) Navigate(urlStr string) error {
 	case <-time.After(NavigationTimeout):
 		return errors.New("navigate '" + urlStr + "' reached timeout")
 	}
-	session.switchContext(nav.FrameID)
-	return nil
+	return session.switchContext(nav.FrameID)
 }
 
 // Reload refresh current page ignores cache
@@ -289,7 +285,7 @@ func (session *Session) blockingSend(method string, params *Params) (MessageResu
 	case <-session.closed:
 		return nil, ErrSessionClosed
 	case <-time.After(WebSocketTimeout):
-		panic(fmt.Sprintf("websocket response reached timeout %s for %s -> %+v", WebSocketTimeout.String(), method, params))
+		return nil, fmt.Errorf("websocket response reached timeout %s for %s -> %+v", WebSocketTimeout.String(), method, params)
 	}
 }
 

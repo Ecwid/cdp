@@ -17,7 +17,10 @@ func main() {
 	}
 	defer c.Close()
 
-	session := c.Client.NewSession(nil)
+	session, err := c.Client.NewSession(nil)
+	if err != nil {
+		panic(err)
+	}
 
 	wait := func(selector string, appear bool) {
 		for start := time.Now(); time.Since(start) < time.Second*20; {

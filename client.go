@@ -1,6 +1,7 @@
 package cdp
 
 import (
+	"errors"
 	"log"
 	"strings"
 	"sync"
@@ -66,12 +67,12 @@ func (client *Client) deleteSession(sessionID string) {
 // NewSession open new session on page target targetID
 // if targetID == nil then client will find already opened targets with page type
 // if no one target exists - client will create a new one
-func (client *Client) NewSession(targetID *string) *Session {
+func (client *Client) NewSession(targetID *string) (*Session, error) {
 	session := newSession(client)
 
 	targets, err := session.getTargets()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	// try to find exist page target
@@ -88,29 +89,34 @@ func (client *Client) NewSession(targetID *string) *Session {
 	if targetID == nil {
 		tID, err := session.createTarget("about:blank")
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 		if tID == "" {
-			panic(`No one target with page type'`)
+			return nil, errors.New(`No one target with page type'`)
 		}
 		targetID = &tID
 	}
 
-	session.sessionID, err = session.attachToTarget(*targetID)
-	if err != nil {
-		panic(err)
+	if session.sessionID, err = session.attachToTarget(*targetID); err != nil {
+		return nil, err
 	}
 	session.targetID = *targetID
 	session.frameID = session.targetID
 	client.sessions[session.sessionID] = session
 
-	_, _ = session.blockingSend("Page.enable", &Params{})
-	_, _ = session.blockingSend("Runtime.enable", &Params{})
-	session.NetworkEnable()
-	_ = session.setLifecycleEventsEnabled(true)
-
-	session.switchContext(*targetID)
-	return session
+	if _, err = session.blockingSend("Page.enable", &Params{}); err != nil {
+		return nil, err
+	}
+	if _, err = session.blockingSend("Runtime.enable", &Params{}); err != nil {
+		return nil, err
+	}
+	if err = session.NetworkEnable(); err != nil {
+		return nil, err
+	}
+	if err = session.setLifecycleEventsEnabled(true); err != nil {
+		return nil, err
+	}
+	return session, session.switchContext(*targetID)
 }
 
 func (client *Client) sendMethod(sessionID string, method string, params *Params) chan MessageResult {

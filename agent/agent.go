@@ -17,7 +17,11 @@ func New(client *cdp.Client) *Agent {
 		Deadline: time.Second * 60,
 		Delay:    time.Millisecond * 500,
 	}
-	agent.stack[0] = client.NewSession(nil)
+	var err error
+	agent.stack[0], err = client.NewSession(nil)
+	if err != nil {
+		panic(err)
+	}
 	return agent
 }
 
@@ -67,9 +71,6 @@ func (a *Agent) proxy0(fn func(s *cdp.Session) error) {
 	if err = fn(a.active()); err == nil {
 		return
 	}
-	if err == nil {
-		panic("agent timeout")
-	}
 	panic(err)
 }
 
@@ -108,10 +109,10 @@ func (a *Agent) GetScreenshot(format cdp.ImageFormat, quality int8, full bool) [
 
 // MainFrame switch context to main frame
 func (a *Agent) MainFrame() {
-	a.proxy0(func(s *cdp.Session) error {
-		s.MainFrame()
-		a.log(nil, nil)
-		return nil
+	a.proxy(func(s *cdp.Session) error {
+		e := s.MainFrame()
+		a.log(nil, []interface{}{e})
+		return e
 	})
 }
 
@@ -127,9 +128,9 @@ func (a *Agent) Reload() {
 // SetHeaders set extra headers
 func (a *Agent) SetHeaders(headers map[string]string) {
 	a.proxy0(func(s *cdp.Session) error {
-		s.SetExtraHTTPHeaders(headers)
-		a.log([]interface{}{headers}, nil)
-		return nil
+		e := s.SetExtraHTTPHeaders(headers)
+		a.log([]interface{}{headers}, []interface{}{e})
+		return e
 	})
 }
 
@@ -157,9 +158,9 @@ func (a *Agent) Navigate(url string) {
 // SetCookies set browser's cookies
 func (a *Agent) SetCookies(cookies ...cdp.CookieParam) {
 	a.proxy0(func(s *cdp.Session) error {
-		s.SetCookies(cookies...)
-		a.log([]interface{}{cookies}, nil)
-		return nil
+		e := s.SetCookies(cookies...)
+		a.log([]interface{}{cookies}, []interface{}{e})
+		return e
 	})
 }
 
@@ -462,10 +463,15 @@ func (a *Agent) Count(selector string) int {
 }
 
 // NewTab call do() func to a new tab opened then switch to the new tab
-func (a *Agent) NewTab(do func()) {
+func (a *Agent) NewTab(do func()) error {
 	target := a.NewTarget(do)
-	sess := a.active().Client().NewSession(&target)
+	sess, err := a.active().Client().NewSession(&target)
+	// popup window can be closed automatically
+	if err != nil {
+		return err
+	}
 	a.stack = append(a.stack, sess)
+	return nil
 }
 
 // PrevTab switch to prev tab in history

@@ -144,24 +144,19 @@ func (session *Session) NetworkEnable() error {
 }
 
 // ClearBrowserCookies ...
-func (session *Session) ClearBrowserCookies() {
-	if _, err := session.blockingSend("Network.clearBrowserCookies", &Params{}); err != nil {
-		panic(err)
-	}
+func (session *Session) ClearBrowserCookies() error {
+	_, err := session.blockingSend("Network.clearBrowserCookies", &Params{})
+	return err
 }
 
 // SetCookies ...
-func (session *Session) SetCookies(cookies ...CookieParam) {
+func (session *Session) SetCookies(cookies ...CookieParam) error {
 	_, err := session.blockingSend("Network.setCookies", &Params{"cookies": cookies})
-	if err != nil {
-		panic(err)
-	}
+	return err
 }
 
 // SetExtraHTTPHeaders Specifies whether to always send extra HTTP headers with the requests from this page.
-func (session *Session) SetExtraHTTPHeaders(headers map[string]string) {
+func (session *Session) SetExtraHTTPHeaders(headers map[string]string) error {
 	_, err := session.blockingSend("Network.setExtraHTTPHeaders", &Params{"headers": headers})
-	if err != nil {
-		panic(err)
-	}
+	return err
 }
