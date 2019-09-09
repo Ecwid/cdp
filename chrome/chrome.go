@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/ecwid/cdp"
 )
@@ -98,11 +99,19 @@ func New(userFlags ...string) (*Chrome, error) {
 
 	cmd := exec.CommandContext(context.Background(), path, flags...)
 	chrome.cancel = func() {
-		state, _ := cmd.Process.Wait()
-		if !state.Exited() {
+		exited := make(chan int)
+		go func() {
+			state, _ := cmd.Process.Wait()
+			exited <- state.ExitCode()
+		}()
+		select {
+		case <-exited:
+			return
+		case <-time.After(time.Millisecond * 2000):
 			if err := cmd.Process.Kill(); err != nil {
 				log.Print(err)
 			}
+			return
 		}
 	}
 	stderr, err := cmd.StderrPipe()
