@@ -92,7 +92,7 @@ func (client *Client) NewSession(targetID *string) (*Session, error) {
 			return nil, err
 		}
 		if tID == "" {
-			return nil, errors.New(`No one target with page type'`)
+			return nil, errors.New("no one target with page type")
 		}
 		targetID = &tID
 	}

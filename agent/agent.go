@@ -436,15 +436,14 @@ func (a *Agent) SendKeys(key ...rune) {
 
 // NewTarget call init and waiting for new target created
 func (a *Agent) NewTarget(init func()) string {
-	var targetInfo chan *cdp.TargetInfo
-	a.proxy0(func(s *cdp.Session) error {
-		targetInfo = s.TargetCreated()
-		a.log(nil, nil)
-		return nil
-	})
+	var targetInfo = a.active().TargetCreated()
 	init()
 	select {
 	case target := <-targetInfo:
+		a.proxy0(func(s *cdp.Session) error {
+			a.log(nil, []interface{}{target.TargetID})
+			return nil
+		})
 		return target.TargetID
 	case <-time.After(cdp.NavigationTimeout):
 		panic("new target has not been created")
