@@ -142,9 +142,6 @@ func (session *Session) IsDisplayed(selector string) (bool, error) {
 		return false, err
 	}
 	defer session.release(objectID)
-	if _, err = session.callFunctionOn(objectID, atom.ScrollIntoView); err != nil {
-		return false, err
-	}
 	_, _, err = session.clickablePoint(objectID)
 	if err == errElementOverlapped || err == errElementNotDisplayed {
 		return false, nil

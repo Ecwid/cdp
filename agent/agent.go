@@ -53,15 +53,12 @@ func (a *Agent) log(params []interface{}, result []interface{}) {
 }
 
 func (a *Agent) proxy(fn func(s *cdp.Session) error) {
-	var err error
+	var err = errors.New("agent deadline")
 	for start := time.Now(); time.Since(start) < a.Deadline; {
 		if err = fn(a.active()); err == nil {
 			return
 		}
 		time.Sleep(a.Delay)
-	}
-	if err == nil {
-		panic("agent timeout")
 	}
 	panic(err)
 }
