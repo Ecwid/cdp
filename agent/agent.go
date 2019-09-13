@@ -393,7 +393,7 @@ func (a *Agent) GetRectangle(selector string) *cdp.Rect {
 	var err error
 	a.proxy(func(s *cdp.Session) error {
 		rect, err = s.GetRectangle(selector)
-		a.log([]interface{}{selector}, []interface{}{rect, err})
+		a.log([]interface{}{selector}, []interface{}{fmt.Sprintf("%+v", rect), err})
 		return err
 	})
 	return rect

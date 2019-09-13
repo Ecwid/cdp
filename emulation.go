@@ -41,6 +41,14 @@ func (session *Session) PerformanceDisable() error {
 	return err
 }
 
+// SetPageScaleFactor https://chromedevtools.github.io/devtools-protocol/tot/Emulation#method-setPageScaleFactor
+func (session *Session) SetPageScaleFactor(pageScaleFactor int) error {
+	_, err := session.blockingSend("Emulation.setPageScaleFactor", &Params{
+		"pageScaleFactor": pageScaleFactor,
+	})
+	return err
+}
+
 // PerformanceGetMetrics Retrieve current values of run-time metrics
 func (session *Session) PerformanceGetMetrics() ([]Metric, error) {
 	msg, err := session.blockingSend("Performance.getMetrics", &Params{})

@@ -159,7 +159,7 @@ func (client *Client) broadcast() {
 	var message MessageResult
 	var err error
 	for {
-		message = make(MessageResult)
+		message = MessageResult{}
 		err = client.conn.ReadJSON(&message)
 		if err != nil {
 			if strings.Contains(err.Error(), "use of closed network connection") {
