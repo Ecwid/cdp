@@ -31,6 +31,20 @@ type Node struct {
 	IsSVG            bool     `json:"isSVG"`
 }
 
+// EventListener https://chromedevtools.github.io/devtools-protocol/tot/DOMDebugger#type-EventListener
+type EventListener struct {
+	Type            string        `json:"type"`
+	UseCapture      bool          `json:"useCapture"`
+	Passive         bool          `json:"passive"`
+	Once            bool          `json:"once"`
+	ScriptID        string        `json:"scriptId"`
+	LineNumber      int64         `json:"lineNumber"`
+	ColumnNumber    int64         `json:"columnNumber"`
+	Handler         *RemoteObject `json:"handler"`
+	OriginalHandler *RemoteObject `json:"originalHandler"`
+	BackendNodeID   int64         `json:"backendNodeId"`
+}
+
 type quad []float64
 
 type highlightConfig struct {
@@ -192,4 +206,18 @@ func (session *Session) getAttributes(nodeID int64) ([]string, error) {
 	attributes := make([]string, 0)
 	unmarshal(msg["attributes"], &attributes)
 	return attributes, err
+}
+
+func (session *Session) getEventListeners(objectID string) ([]EventListener, error) {
+	raw, err := session.blockingSend("DOMDebugger.getEventListeners", &Params{
+		"objectId": objectID,
+		"depth":    1,
+		"pierce":   true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	events := make([]EventListener, 0)
+	unmarshal(raw["listeners"], &events)
+	return events, nil
 }

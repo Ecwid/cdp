@@ -429,3 +429,13 @@ func (session *Session) Highlight(selector string) error {
 	}
 	return session.highlightQuad(q, &rgba{R: 255, G: 1, B: 1})
 }
+
+// GetEventListeners returns event listeners of the given object.
+func (session *Session) GetEventListeners(selector string) ([]EventListener, error) {
+	element, err := session.findElement(selector)
+	if err != nil {
+		return nil, err
+	}
+	defer session.release(element)
+	return session.getEventListeners(element)
+}
