@@ -72,7 +72,7 @@ func (rec *Recorder) GetRequest(requestID string) *Request {
 
 // Serialize serialize to bytes
 func (rec *Recorder) Serialize() ([]byte, error) {
-	return json.Marshal(rec.Log)
+	return json.Marshal(rec)
 }
 
 func (har *HAR) frameStartedLoading(parameters cdp.Params) {
