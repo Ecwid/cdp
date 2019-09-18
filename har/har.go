@@ -70,6 +70,11 @@ func (rec *Recorder) GetRequest(requestID string) *Request {
 	return nil
 }
 
+// Serialize serialize to bytes
+func (rec *Recorder) Serialize() ([]byte, error) {
+	return json.Marshal(rec.Log)
+}
+
 func (har *HAR) frameStartedLoading(parameters cdp.Params) {
 	page := &Page{
 		StartedDateTime: time.Now(),
