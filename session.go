@@ -1,6 +1,7 @@
 package cdp
 
 import (
+	"container/list"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,7 +17,7 @@ var NavigationTimeout = time.Second * 40
 var WebSocketTimeout = time.Minute * 3
 
 // ErrSessionClosed current session (target) already closed
-var ErrSessionClosed = errors.New(`Session closed`)
+var ErrSessionClosed = errors.New("session closed")
 
 // Session CDP session
 type Session struct {
@@ -27,7 +28,7 @@ type Session struct {
 	contextID     int64
 	frameID       string
 	incomingEvent chan MessageResult // queue of incoming events from browser
-	callbacks     map[string][]func(Params)
+	callbacks     map[string]*list.List
 	closed        chan bool
 }
 
@@ -35,7 +36,7 @@ func newSession(client *Client) *Session {
 	session := &Session{
 		client:        client,
 		incomingEvent: make(chan MessageResult, 2000),
-		callbacks:     make(map[string][]func(Params)),
+		callbacks:     make(map[string]*list.List),
 		closed:        make(chan bool, 1),
 	}
 	go session.listener()
@@ -230,13 +231,11 @@ func (session *Session) listener() {
 
 		method = e["method"].(string)
 		session.rw.RLock()
-		cbs, has := session.callbacks[method]
+		lst, has := session.callbacks[method]
 		session.rw.RUnlock()
 		if has {
-			for _, c := range cbs {
-				if c != nil {
-					c(e["params"].(Params))
-				}
+			for p := lst.Front(); p != nil; p = p.Next() {
+				p.Value.(func(Params))(e["params"].(Params))
 			}
 		}
 
@@ -294,15 +293,14 @@ func (session *Session) blockingSend(method string, params *Params) (MessageResu
 func (session *Session) Subscribe(method string, callback func(params Params)) (unsubscribe func()) {
 	session.rw.Lock()
 	if _, has := session.callbacks[method]; !has {
-		session.callbacks[method] = make([]func(Params), 0)
+		session.callbacks[method] = list.New()
 	}
-	session.callbacks[method] = append(session.callbacks[method], callback)
-	index := len(session.callbacks[method]) - 1
+	p := session.callbacks[method].PushBack(callback)
 	session.rw.Unlock()
 
 	return func() {
 		session.rw.Lock()
-		session.callbacks[method][index] = nil
+		session.callbacks[method].Remove(p)
 		session.rw.Unlock()
 	}
 }
