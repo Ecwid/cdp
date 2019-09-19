@@ -8,12 +8,14 @@ import (
 	"github.com/ecwid/cdp/atom"
 )
 
+// cdp errors
 var (
-	errElementNotDisplayed = errors.New("element not rendered or overlapped")
-	errElementOverlapped   = errors.New("element overlapped")
-	errClickNotConfirmed   = errors.New("click not confirmed")
-	errHoverNotConfirmed   = errors.New("mouseover not confirmed")
-	errTypeIsNotString     = errors.New("object type is not string")
+	ErrElementNotDisplayed = errors.New("element not rendered or overlapped")
+	ErrElementOverlapped   = errors.New("element overlapped")
+	ErrClickNotConfirmed   = errors.New("click not confirmed")
+	ErrHoverNotConfirmed   = errors.New("mouseover not confirmed")
+	ErrTypeIsNotString     = errors.New("object type is not string")
+	ErrElementNotFound     = errors.New("element not found")
 )
 
 func (session *Session) release(elements ...string) {
@@ -37,7 +39,7 @@ func (session *Session) findElements(selector string) ([]string, error) {
 		return nil, err
 	}
 	if array == nil || array.Description == "NodeList(0)" {
-		return nil, errors.New(`no one element ` + selector + ` found in frame ` + session.frameID)
+		return nil, ErrElementNotFound
 	}
 	descriptor, err := session.getProperties(array.ObjectID)
 	if err != nil {
@@ -71,7 +73,7 @@ func (session *Session) Upload(selector string, files ...string) error {
 func (session *Session) clickablePoint(objectID string) (x float64, y float64, e error) {
 	rect, err := session.getContentQuads(0, objectID)
 	if err != nil {
-		return -1, -1, errElementNotDisplayed
+		return -1, -1, ErrElementNotDisplayed
 	}
 	x, y = rect.middle()
 	/*
@@ -97,7 +99,7 @@ func (session *Session) clickablePoint(objectID string) (x float64, y float64, e
 	// Если клик принимает другой элемент, либо элемент не родитель ожидаемого, то выбросим ошибк
 	clickable, err := session.callFunctionOn(objectID, atom.IsClickableAt, cX, cY)
 	if err != nil || !clickable.bool() {
-		return x, y, errElementOverlapped
+		return x, y, ErrElementOverlapped
 	}
 	return x, y, nil
 }
@@ -135,7 +137,7 @@ func (session *Session) Click(selector string) error {
 	if err != nil || fired.bool() {
 		return nil
 	}
-	return errClickNotConfirmed
+	return ErrClickNotConfirmed
 }
 
 // IsDisplayed is element visible (by checking clickability)
@@ -146,7 +148,7 @@ func (session *Session) IsDisplayed(selector string) (bool, error) {
 	}
 	defer session.release(objectID)
 	_, _, err = session.clickablePoint(objectID)
-	if err == errElementOverlapped || err == errElementNotDisplayed {
+	if err == ErrElementOverlapped || err == ErrElementNotDisplayed {
 		return false, nil
 	}
 	if err != nil {
@@ -173,7 +175,7 @@ func (session *Session) Hover(selector string) error {
 	session.dispatchMouseEvent(0, 0, DispatchMouseEventMoved, "none")
 	q, err := session.getContentQuads(0, objectID)
 	if err != nil {
-		return errElementNotDisplayed
+		return ErrElementNotDisplayed
 	}
 	// add onmouseover event listener on element
 	_, err = session.callFunctionOn(objectID, atom.AddEventFired, "mouseover")
@@ -186,7 +188,7 @@ func (session *Session) Hover(selector string) error {
 	if err != nil || fired.bool() {
 		return nil
 	}
-	return errHoverNotConfirmed
+	return ErrHoverNotConfirmed
 }
 
 // Type ...
@@ -240,7 +242,7 @@ func (session *Session) textContent(objectID string) (string, error) {
 		return "", err
 	}
 	if obj.Type != "string" {
-		return "", errTypeIsNotString
+		return "", ErrTypeIsNotString
 	}
 	return obj.Value.(string), nil
 }
@@ -288,7 +290,7 @@ func (session *Session) GetAttr(selector string, attr string) (string, error) {
 		return "", err
 	}
 	if value.Type != "string" {
-		return "", errTypeIsNotString
+		return "", ErrTypeIsNotString
 	}
 	return value.Value.(string), nil
 }
@@ -329,7 +331,7 @@ func (session *Session) GetComputedStyle(selector string, style string) (string,
 		return "", err
 	}
 	if computedStyle.Type != "string" {
-		return "", errTypeIsNotString
+		return "", ErrTypeIsNotString
 	}
 	return computedStyle.Value.(string), nil
 }
