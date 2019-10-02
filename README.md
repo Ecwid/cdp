@@ -1,3 +1,6 @@
+# Non maintained!
+Using https://github.com/Ecwid/witness instead
+
 # About cdp packages
 Golang client driving Chrome browser using the Chrome DevTools Protocol.
 CDP Agent has Selenium like interface and tolerance of timing problems so painless can be used for automation of reactive and ajax pages.
