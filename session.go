@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"reflect"
 	"sync"
 	"time"
@@ -94,9 +93,7 @@ func (session *Session) start(targetID string) error {
 	}
 	session.targetID = targetID
 	session.id = result["sessionId"].(string)
-	if session.id == "" {
-		return errors.New("attachToTarget session is nil")
-	}
+
 	go session.listener()
 	session.ws.subscribe(session.id, session.broadcast)
 	if err = session.call("Page.enable", nil, nil); err != nil {
@@ -143,7 +140,6 @@ func (session Session) listener() {
 				session.close(err)
 				return
 			}
-			log.Printf("%s -> %d", c.Context.AuxData["frameId"].(string), c.Context.ID)
 			session.frames.Store(c.Context.AuxData["frameId"].(string), c.Context.ID)
 
 		case "Runtime.executionContextDestroyed":

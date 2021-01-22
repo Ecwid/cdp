@@ -212,27 +212,27 @@ func (session Session) CaptureScreenshot(format string, quality int8) ([]byte, e
 func (session Session) Listen(methods ...string) (chan *Event, func()) {
 	var (
 		wg          = sync.WaitGroup{}
-		eventsChan  = make(chan *Event, 1)
+		queue       = make(chan *Event, 10)
 		interrupt   = make(chan struct{})
-		unsubscribe = make([]func(), 0)
+		unsubscribe = make([]func(), len(methods))
 	)
 	callback := func(e *Event) {
 		wg.Add(1)
 		defer wg.Done()
 		select {
-		case eventsChan <- e:
+		case queue <- e:
 		case <-interrupt:
 		}
 	}
 	for _, m := range methods {
 		unsubscribe = append(unsubscribe, session.Subscribe(m, callback))
 	}
-	return eventsChan, func() {
+	return queue, func() {
 		close(interrupt)
 		for _, un := range unsubscribe {
 			un()
 		}
 		wg.Wait()
-		close(eventsChan)
+		close(queue)
 	}
 }

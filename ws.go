@@ -194,7 +194,7 @@ func (w *WSClient) writer() {
 		select {
 		case <-w.disconnected:
 			_ = w.conn.Close()
-			w.publish(&wsResponse{Error: wsError{Message: ErrWebSocketClosure.Error()}})
+			w.publish(&wsResponse{Error: wsError{Message: ErrConnectionClosed.Error()}})
 			return
 		case req := <-w.send:
 			w.printf(LevelProtocolMessage, "\033[1;36msend -> %s\033[0m", string(req))
@@ -202,7 +202,6 @@ func (w *WSClient) writer() {
 				w.throw(err)
 			}
 		case err := <-w.err:
-			w.err <- err
 			if err != nil {
 				w.publish(&wsResponse{Error: wsError{Message: err.Error()}})
 			}

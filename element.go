@@ -103,7 +103,7 @@ func (e *Element) Click() error {
 	if err = e.session.dispatchMouseEvent(x, y, dispatchMouseEventReleased, "left"); err != nil {
 		return err
 	}
-	hit, err := e.call(atom.IsClickHit)
+	hit, err := e.call(atom.ClickHitReturn)
 	// in case when click is initiate navigation which destroyed context of element (ErrElementDetached)
 	// or click may closes a popup (ErrSessionClosed)
 	switch err {
@@ -113,7 +113,7 @@ func (e *Element) Click() error {
 		if hit.Bool() {
 			return nil
 		}
-		return ErrElementMissClick
+		return ErrClickFailed
 	default:
 		return err
 	}
@@ -329,7 +329,7 @@ func (e *Element) Checkbox(check bool) error {
 
 // Checked ...
 func (e *Element) Checked() (bool, error) {
-	checked, err := e.call(`function(){return this.checked}`)
+	checked, err := e.call(atom.Checked)
 	return checked.Bool(), err
 }
 

@@ -2,6 +2,7 @@ package test
 
 import (
 	"context"
+	"log"
 	"strconv"
 	"testing"
 	"time"
@@ -38,7 +39,7 @@ func TestClickHit(t *testing.T) {
 		switch err {
 		case nil:
 			pass++
-		case cdp.ErrElementMissClick:
+		case cdp.ErrClickFailed:
 			miss++
 		default:
 			t.Fatal(err)
@@ -53,7 +54,7 @@ func TestClickHit(t *testing.T) {
 	check(t, err)
 
 	rate := (100 * pass) / (miss + pass)
-	t.Logf("pass = %d, miss = %d, rate = %d", pass, miss, rate)
+	log.Printf("pass = %d, miss = %d, rate = %d", pass, miss, rate)
 	if rate <= expectedRate {
 		t.Fatalf("miss click degradation - expected at least %d%% success click, but was %d", expectedRate, rate)
 	}
