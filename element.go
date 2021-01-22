@@ -2,353 +2,259 @@ package cdp
 
 import (
 	"errors"
-	"strings"
 	"time"
 
-	"github.com/ecwid/cdp/atom"
+	"github.com/ecwid/cdp/internal/atom"
+	"github.com/ecwid/cdp/pkg/devtool"
 )
 
-// cdp errors
-var (
-	ErrElementNotDisplayed = errors.New("element not rendered or overlapped")
-	ErrElementOverlapped   = errors.New("element overlapped")
-	ErrClickNotConfirmed   = errors.New("click not confirmed")
-	ErrHoverNotConfirmed   = errors.New("mouseover not confirmed")
-	ErrTypeIsNotString     = errors.New("object type is not string")
-	ErrElementNotFound     = errors.New("element not found")
-)
-
-func (session *Session) release(elements ...string) {
-	for _, e := range elements {
-		_ = session.releaseObject(e)
-	}
+// Element ...
+type Element struct {
+	session *Session
+	ID      string
+	context int64
 }
 
-func (session *Session) findElement(selector string) (string, error) {
-	elements, err := session.findElements(selector)
-	if err != nil {
-		return "", err
-	}
-	return elements[0], nil
-}
-
-func (session *Session) findElements(selector string) ([]string, error) {
-	selector = strings.ReplaceAll(selector, `"`, `\"`)
-	array, err := session.Evaluate(`document.querySelectorAll("`+selector+`")`, session.contextID)
+func newElement(s *Session, parent *Element, ID string) (*Element, error) {
+	c, err := s.executionContext()
 	if err != nil {
 		return nil, err
 	}
-	if array == nil || array.Description == "NodeList(0)" {
-		return nil, ErrElementNotFound
+	el := &Element{
+		ID:      ID,
+		session: s,
+		context: c,
 	}
-	descriptor, err := session.getProperties(array.ObjectID)
+	return el, nil
+}
+
+// Detached ...
+func (e *Element) Detached() bool {
+	c, err := e.session.executionContext()
+	if err != nil {
+		return true
+	}
+	return e.context != c
+}
+
+func (e *Element) call(functionDeclaration string, arg ...interface{}) (*devtool.RemoteObject, error) {
+	if e.Detached() {
+		return nil, ErrElementDetached
+	}
+	return e.session.callFunctionOn(e.ID, functionDeclaration, arg...)
+}
+
+// Call evaluate javascript for element, for example `function() {return this.innerHTML}`
+func (e *Element) Call(functionDeclaration string, arg ...interface{}) (interface{}, error) {
+	v, err := e.call(functionDeclaration, arg...)
 	if err != nil {
 		return nil, err
 	}
-	var elements []string
-	for _, d := range descriptor {
-		if !d.Enumerable {
-			continue
-		}
-		elements = append(elements, d.Value.ObjectID)
-	}
-	return elements, err
+	return v.Value, nil
 }
 
-func (session *Session) dispatchEvent(element string, name string) error {
-	_, err := session.callFunctionOn(element, atom.DispatchEvent, name)
+func (e *Element) dispatchEvents(events ...string) error {
+	_, err := e.call(atom.DispatchEvents, append([]string{}, events...))
 	return err
 }
 
-// Upload upload files into selector
-func (session *Session) Upload(selector string, files ...string) error {
-	element, err := session.findElement(selector)
-	if err != nil {
-		return err
-	}
-	defer session.release(element)
-	return session.setFileInputFiles(files, element)
+// Focus focus element
+func (e *Element) Focus() error {
+	return e.session.call("DOM.focus", Map{"objectId": e.ID}, nil)
 }
 
-func (session *Session) clickablePoint(objectID string) (x float64, y float64, e error) {
-	rect, err := session.getContentQuads(0, objectID)
+// Upload upload files
+func (e *Element) Upload(files ...string) error {
+	return e.session.call("DOM.setFileInputFiles", Map{"files": files, "objectId": e.ID}, nil)
+}
+
+func (e *Element) clickablePoint() (x float64, y float64, err error) {
+	r, err := e.session.GetContentQuads(e.ID, true)
 	if err != nil {
-		return -1, -1, ErrElementNotDisplayed
+		return -1, -1, err
 	}
-	x, y = rect.middle()
-	/*
-		При определении элемента, по которому произойдет клик по координатам x, y, необходимо учесть случай,
-		когда клик происходит во фрейме. Во фрейме метод elementFromPoint(x, y) работает относительно координат самого фрейма,
-		а не абсолютных координат viewport браузера. Здесь мы вычисляем координаты фрейма и вычитаем их
-		из значений x, y для теста клика.
-	*/
-	cX, cY := x, y
-	if session.frameID != session.targetID {
-		frameElement, err := session.getFrameOwner(session.frameID)
-		if err != nil {
-			return x, y, err
-		}
-		size, err := session.getContentQuads(frameElement, "")
-		if err != nil {
-			return x, y, err
-		}
-		cX -= size[0]
-		cY -= size[1]
-	}
-	// Выполняет тест клика по координатам cX, cY (координаты относительно текущего фрейма)
-	// Если клик принимает другой элемент, либо элемент не родитель ожидаемого, то выбросим ошибк
-	clickable, err := session.callFunctionOn(objectID, atom.IsClickableAt, cX, cY)
-	if err != nil || !clickable.bool() {
-		return x, y, ErrElementOverlapped
-	}
+	x, y = r.Middle()
 	return x, y, nil
 }
 
-// Click ...
-func (session *Session) Click(selector string) error {
-	// find element for click at
-	element, err := session.findElement(selector)
-	if err != nil {
-		return err
-	}
-	// release javascript object on exit
-	defer session.release(element)
-	// scroll element into view
-	if _, err = session.callFunctionOn(element, atom.ScrollIntoView); err != nil {
-		return err
-	}
-	// add click event listener on element
-	_, err = session.callFunctionOn(element, atom.AddEventFired, "click")
-	if err != nil {
-		return err
-	}
-	// calculate click point
-	x, y, err := session.clickablePoint(element)
-	if err != nil {
-		return err
-	}
-
-	session.dispatchMouseEvent(x, y, DispatchMouseEventMoved, "none")
-	session.dispatchMouseEvent(x, y, DispatchMouseEventPressed, "left")
-	session.dispatchMouseEvent(x, y, DispatchMouseEventReleased, "left")
-
-	// check to click happens
-	fired, err := session.callFunctionOn(element, atom.IsEventFired)
-	if err != nil || fired.bool() {
-		return nil
-	}
-	return ErrClickNotConfirmed
+func (e *Element) scrollIntoView() (err error) {
+	_, err = e.call(atom.ScrollIntoView)
+	return
 }
 
-// IsDisplayed is element visible (by checking clickability)
-func (session *Session) IsDisplayed(selector string) (bool, error) {
-	objectID, err := session.findElement(selector)
+// Click ...
+func (e *Element) Click() error {
+	if err := e.scrollIntoView(); err != nil {
+		return err
+	}
+	x, y, err := e.clickablePoint()
 	if err != nil {
+		return err
+	}
+	if _, err = e.call(atom.PreventMissClick); err != nil {
+		return err
+	}
+	if err = e.session.dispatchMouseEvent(x, y, dispatchMouseEventMoved, "none"); err != nil {
+		return err
+	}
+	if err = e.session.dispatchMouseEvent(x, y, dispatchMouseEventPressed, "left"); err != nil {
+		return err
+	}
+	if err = e.session.dispatchMouseEvent(x, y, dispatchMouseEventReleased, "left"); err != nil {
+		return err
+	}
+	hit, err := e.call(atom.IsClickHit)
+	// in case when click is initiate navigation which destroyed context of element (ErrElementDetached)
+	// or click may closes a popup (ErrSessionClosed)
+	switch err {
+	case ErrElementDetached, ErrSessionClosed:
+		return nil
+	case nil:
+		if hit.Bool() {
+			return nil
+		}
+		return ErrElementMissClick
+	default:
+		return err
+	}
+}
+
+// GetFrameID get if for IFRAME element
+func (e *Element) GetFrameID() (string, error) {
+	node, err := e.session.GetNode(e.ID)
+	if err != nil {
+		return "", err
+	}
+	if "IFRAME" != node.NodeName && "FRAME" != node.NodeName {
+		return "", errors.New("specified element is not a IFRAME")
+	}
+	return node.FrameID, nil
+}
+
+// IsVisible is element visible (element has area that clickable in viewport)
+func (e *Element) IsVisible() (bool, error) {
+	if _, _, err := e.clickablePoint(); err != nil {
+		if err == ErrElementInvisible {
+			return false, nil
+		}
 		return false, err
 	}
-	defer session.release(objectID)
-	_, _, err = session.clickablePoint(objectID)
-	if err == ErrElementOverlapped || err == ErrElementNotDisplayed {
+	if vis, err := e.call(atom.IsVisible); err != nil || !vis.Bool() {
 		return false, nil
-	}
-	if err != nil {
-		return false, err
 	}
 	return true, nil
 }
 
-// HoverXY move mouse at (x, y)
-func (session *Session) HoverXY(x, y float64) {
-	session.dispatchMouseEvent(x, y, DispatchMouseEventMoved, "none")
+// Hover hover mouse on element
+func (e *Element) Hover() error {
+	if err := e.scrollIntoView(); err != nil {
+		return err
+	}
+	x, y, err := e.clickablePoint()
+	if err != nil {
+		return err
+	}
+	return e.session.MouseMove(x, y)
 }
 
-// Hover hover mouse on element
-func (session *Session) Hover(selector string) error {
-	objectID, err := session.findElement(selector)
-	if err != nil {
+// Clear ...
+func (e *Element) Clear() error {
+	var err error
+	if err = e.Focus(); err != nil {
 		return err
 	}
-	defer session.release(objectID)
-	if _, err = session.callFunctionOn(objectID, atom.ScrollIntoView); err != nil {
-		return err
-	}
-	session.dispatchMouseEvent(0, 0, DispatchMouseEventMoved, "none")
-	q, err := session.getContentQuads(0, objectID)
-	if err != nil {
-		return ErrElementNotDisplayed
-	}
-	// add onmouseover event listener on element
-	_, err = session.callFunctionOn(objectID, atom.AddEventFired, "mouseover")
-	if err != nil {
-		return err
-	}
-	session.HoverXY(q.middle())
-	// check to mouseover happens
-	fired, err := session.callFunctionOn(objectID, atom.IsEventFired)
-	if err != nil || fired.bool() {
-		return nil
-	}
-	return ErrHoverNotConfirmed
+	_, err = e.call(atom.ClearInput)
+	return err
 }
 
 // Type ...
-func (session *Session) Type(selector string, text string, key ...rune) error {
-	// find element for type in
-	element, err := session.findElement(selector)
-	if err != nil {
+func (e *Element) Type(text string, key ...rune) error {
+	var err error
+	if enable, err := e.call(atom.IsVisible); err != nil || !enable.Bool() {
 		return err
 	}
-	// release javascript object on exit
-	defer session.release(element)
-	// element needs focus to send keys
-	if err = session.focus(element); err != nil {
+	if err = e.Clear(); err != nil {
 		return err
 	}
-	// clear input before type text
-	if _, err := session.callFunctionOn(element, atom.ClearInput); err != nil {
+	time.Sleep(time.Millisecond * 250)
+	if err := e.dispatchEvents("keydown"); err != nil {
 		return err
 	}
 	// insert text, not typing
-	err = session.insertText(text)
+	// todo natural typing
+	err = e.session.InsertText(text)
 	if err != nil {
 		return err
 	}
-	session.dispatchEvent(element, `input`)
-	session.dispatchEvent(element, `change`)
-
+	if err := e.dispatchEvents("keypress", "input", "keyup", "change"); err != nil {
+		return err
+	}
 	// send keyboard key after some pause
 	if key != nil {
-		time.Sleep(time.Millisecond * 200)
-		return session.SendKeys(key...)
+		time.Sleep(time.Millisecond * 250)
+		return e.session.SendKeys(key...)
 	}
 	return nil
 }
 
-// SendKeys send keyboard keys to focused element
-func (session *Session) SendKeys(key ...rune) error {
-	var err error
-	for _, k := range key {
-		err = session.sendRune(k)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (session *Session) textContent(objectID string) (string, error) {
-	obj, err := session.callFunctionOn(objectID, atom.GetInnerText)
+func (e *Element) string(functionDeclaration string, arg ...interface{}) (string, error) {
+	res, err := e.call(functionDeclaration, arg...)
 	if err != nil {
 		return "", err
 	}
-	if obj.Type != "string" {
-		return "", ErrTypeIsNotString
+	if res.Type != "string" {
+		return "", ErrInvalidString
 	}
-	return obj.Value.(string), nil
+	return res.Value.(string), nil
 }
 
-// Text ...
-func (session *Session) Text(selector string) ([]string, error) {
-	elements, err := session.findElements(selector)
-	if err != nil {
-		return nil, err
-	}
-	defer session.release(elements...)
-	array := make([]string, len(elements))
-	for index, el := range elements {
-		array[index], err = session.textContent(el)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return array, nil
+// GetText ...
+func (e *Element) GetText() (string, error) {
+	return e.string(atom.GetInnerText)
 }
 
 // SetAttr ...
-func (session *Session) SetAttr(selector string, attr string, value string) error {
-	element, err := session.findElement(selector)
-	if err != nil {
-		return err
-	}
-	defer session.release(element)
-	_, err = session.callFunctionOn(element, atom.SetAttr, attr, value)
-	if err != nil {
-		return err
-	}
-	return nil
+func (e *Element) SetAttr(attr string, value string) (err error) {
+	_, err = e.call(atom.SetAttr, attr, value)
+	return
 }
 
 // GetAttr ...
-func (session *Session) GetAttr(selector string, attr string) (string, error) {
-	element, err := session.findElement(selector)
-	if err != nil {
-		return "", err
-	}
-	defer session.release(element)
-	value, err := session.callFunctionOn(element, atom.GetAttr, attr)
-	if err != nil {
-		return "", err
-	}
-	if value.Type != "string" {
-		return "", ErrTypeIsNotString
-	}
-	return value.Value.(string), nil
+func (e *Element) GetAttr(attr string) (string, error) {
+	return e.string(atom.GetAttr, attr)
 }
 
 // GetRectangle ...
-func (session *Session) GetRectangle(selector string) (*Rect, error) {
-	element, err := session.findElement(selector)
+func (e *Element) GetRectangle() (*devtool.Rect, error) {
+	q, err := e.session.GetContentQuads(e.ID, false)
 	if err != nil {
 		return nil, err
 	}
-	defer session.release(element)
-	q, err := session.getContentQuads(0, element)
-	if err != nil {
-		if err.Error() == `Could not compute content quads.` {
-			// element not visible and dimension can't be got
-			return nil, nil
-		}
-		return nil, err
-	}
-	rect := &Rect{
-		X:      q[0],
-		Y:      q[1],
-		Width:  q[2] - q[0],
-		Height: q[7] - q[1],
+	rect := &devtool.Rect{
+		X:      q[0].X,
+		Y:      q[0].Y,
+		Width:  q[1].X - q[0].X,
+		Height: q[3].Y - q[0].Y,
 	}
 	return rect, nil
 }
 
 // GetComputedStyle ...
-func (session *Session) GetComputedStyle(selector string, style string) (string, error) {
-	element, err := session.findElement(selector)
-	if err != nil {
-		return "", err
-	}
-	defer session.release(element)
-	computedStyle, err := session.callFunctionOn(element, atom.GetComputedStyle, style)
-	if err != nil {
-		return "", err
-	}
-	if computedStyle.Type != "string" {
-		return "", ErrTypeIsNotString
-	}
-	return computedStyle.Value.(string), nil
+func (e *Element) GetComputedStyle(style string) (string, error) {
+	return e.string(atom.GetComputedStyle, style)
 }
 
 // GetSelected ...
-func (session *Session) GetSelected(selector string, selectedText bool) ([]string, error) {
-	element, err := session.findElement(selector)
-	if err != nil {
-		return nil, err
-	}
-	defer session.release(element)
+func (e *Element) GetSelected(selectedText bool) ([]string, error) {
 	a := atom.GetSelected
 	if selectedText {
 		a = atom.GetSelectedText
 	}
-	selected, err := session.callFunctionOn(element, a)
-	descriptor, err := session.getProperties(selected.ObjectID)
+	ro, err := e.call(a)
+	if err != nil {
+		return nil, err
+	}
+	descriptor, err := e.session.getProperties(ro.ObjectID)
 	if err != nil {
 		return nil, err
 	}
@@ -362,85 +268,95 @@ func (session *Session) GetSelected(selector string, selectedText bool) ([]strin
 	return options, nil
 }
 
+// ObserveMutation create MutationObserver Promise for element, returns type of first mutation
+func (e *Element) ObserveMutation(attributes, childList, subtree bool) (chan string, chan error) {
+	chanerr := make(chan error, 1)
+	mutation := make(chan string, 1)
+	go func() {
+		val, err := e.call(atom.MutationObserver, attributes, childList, subtree)
+		if err != nil {
+			chanerr <- err
+			return
+		}
+		if val.Type != "string" {
+			chanerr <- ErrInvalidString
+		}
+		mutation <- val.Value.(string)
+	}()
+	return mutation, chanerr
+}
+
 // Select ...
-func (session *Session) Select(selector string, values ...string) error {
-	element, err := session.findElement(selector)
-	if err != nil {
-		return err
-	}
-	defer session.release(element)
-	node, err := session.describeNode(element)
+func (e *Element) Select(values ...string) error {
+	node, err := e.session.GetNode(e.ID)
 	if err != nil {
 		return err
 	}
 	if "SELECT" != node.NodeName {
-		return errors.New(`node ` + selector + ` require has type SELECT`)
+		return ErrInvalidElementSelect
 	}
-	has, err := session.callFunctionOn(element, atom.SelectHasOptions, values)
-	if !has.bool() {
-		return errors.New(`select ` + selector + ` doesn't has options with values ` + strings.Join(values, ","))
-	}
-	_, err = session.callFunctionOn(element, atom.Select, values)
-	return err
-}
-
-// Checkbox Checkbox
-func (session *Session) Checkbox(selector string, check bool) error {
-	element, err := session.findElement(selector)
+	has, err := e.call(atom.SelectHasOptions, values)
 	if err != nil {
 		return err
 	}
-	defer session.release(element)
-	if _, err = session.callFunctionOn(element, atom.CheckBox, check); err != nil {
+	if !has.Bool() {
+		return ErrInvalidElementOption
+	}
+	if err = e.scrollIntoView(); err != nil {
 		return err
 	}
-	time.Sleep(time.Millisecond * 250) // todo
-	session.dispatchEvent(element, `click`)
-	session.dispatchEvent(element, `change`)
+	if _, err = e.call(atom.Select, values); err != nil {
+		return err
+	}
+	time.Sleep(time.Millisecond * 250)
+	if err := e.dispatchEvents("input", "change"); err != nil {
+		return err
+	}
 	return nil
 }
 
-// IsChecked ...
-func (session *Session) IsChecked(selector string) (bool, error) {
-	element, err := session.findElement(selector)
-	if err != nil {
-		return false, err
-	}
-	defer session.release(element)
-	checked, err := session.callFunctionOn(element, atom.IsChecked)
-	return checked.bool(), err
-}
-
-// Count count of elements
-func (session *Session) Count(selector string) int {
-	elements, err := session.findElements(selector)
-	if err != nil {
-		return 0
-	}
-	defer session.release(elements...)
-	return len(elements)
-}
-
-// Highlight color highlight element at overlay
-func (session *Session) Highlight(selector string) error {
-	element, err := session.findElement(selector)
-	if err != nil {
+// Checkbox Checkbox
+func (e *Element) Checkbox(check bool) error {
+	if _, err := e.call(atom.CheckBox, check); err != nil {
 		return err
 	}
-	defer session.release(element)
-	q, err := session.getContentQuads(0, element)
-	if err != nil {
+	time.Sleep(time.Millisecond * 250)
+	if err := e.dispatchEvents("click", "change"); err != nil {
 		return err
 	}
-	return session.highlightQuad(q, &rgba{R: 255, G: 1, B: 1})
+	return nil
+}
+
+// Checked ...
+func (e *Element) Checked() (bool, error) {
+	checked, err := e.call(`function(){return this.checked}`)
+	return checked.Bool(), err
 }
 
 // GetEventListeners returns event listeners of the given object.
-func (session *Session) GetEventListeners(selector string) ([]EventListener, error) {
-	element, err := session.findElement(selector)
+func (e *Element) GetEventListeners() ([]string, error) {
+	events := new(devtool.EventListeners)
+	err := e.session.call("DOMDebugger.getEventListeners", Map{
+		"objectId": e.ID,
+		"depth":    1,
+		"pierce":   true,
+	}, events)
 	if err != nil {
 		return nil, err
 	}
-	defer session.release(element)
-	return session.getEventListeners(element)
+	types := make([]string, len(events.Listeners))
+	for n, e := range events.Listeners {
+		types[n] = e.Type
+	}
+	return types, nil
+}
+
+// Query ...
+func (e *Element) Query(selector string) (*Element, error) {
+	return e.session.query(e, selector)
+}
+
+// QueryAll ...
+func (e *Element) QueryAll(selector string) ([]*Element, error) {
+	return e.session.queryAll(e, selector)
 }

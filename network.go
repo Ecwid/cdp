@@ -1,162 +1,175 @@
 package cdp
 
-// Request https://chromedevtools.github.io/devtools-protocol/tot/Network#type-Request
-type Request struct {
-	URL              string                 `json:"url"`
-	URLFragment      string                 `json:"urlFragment"`
-	Method           string                 `json:"method"`
-	Headers          map[string]interface{} `json:"headers"`
-	PostData         string                 `json:"postData"`
-	HasPostData      bool                   `json:"hasPostData"`
-	MixedContentType string                 `json:"mixedContentType"`
-	InitialPriority  string                 `json:"initialPriority"`
-	ReferrerPolicy   string                 `json:"referrerPolicy"`
-	IsLinkPreload    bool                   `json:"isLinkPreload"`
-}
+import (
+	"encoding/base64"
+	"encoding/json"
 
-// RequestWillBeSent https://chromedevtools.github.io/devtools-protocol/tot/Network#event-requestWillBeSent
-type RequestWillBeSent struct {
-	RequestID        string    `json:"requestId"`
-	LoaderID         string    `json:"loaderId"`
-	DocumentURL      string    `json:"documentURL"`
-	Request          *Request  `json:"request"`
-	Timestamp        float64   `json:"timestamp"`
-	WallTime         float64   `json:"wallTime"`
-	RedirectResponse *Response `json:"redirectResponse"`
-	Type             string    `json:"type"`
-	FrameID          string    `json:"frameId"`
-	HasUserGesture   bool      `json:"hasUserGesture"`
-}
-
-// ResponseReceived https://chromedevtools.github.io/devtools-protocol/tot/Network#event-responseReceived
-type ResponseReceived struct {
-	RequestID string    `json:"requestId"`
-	LoaderID  string    `json:"loaderId"`
-	Timestamp float64   `json:"timestamp"`
-	Type      string    `json:"type"`
-	Response  *Response `json:"response"`
-	FrameID   string    `json:"frameId"`
-}
-
-// DataReceived https://chromedevtools.github.io/devtools-protocol/tot/Network#event-dataReceived
-type DataReceived struct {
-	RequestID         string  `json:"requestId"`
-	Timestamp         float64 `json:"timestamp"`
-	DataLength        int64   `json:"dataLength"`
-	EncodedDataLength int64   `json:"encodedDataLength"`
-}
-
-// LoadingFinished https://chromedevtools.github.io/devtools-protocol/tot/Network#event-loadingFinished
-type LoadingFinished struct {
-	RequestID                string  `json:"requestId"`
-	Timestamp                float64 `json:"timestamp"`
-	EncodedDataLength        float64 `json:"encodedDataLength"`
-	ShouldReportCorbBlocking bool    `json:"shouldReportCorbBlocking"`
-}
-
-// ServedFromCache https://chromedevtools.github.io/devtools-protocol/tot/Network#event-requestServedFromCache
-type ServedFromCache struct {
-	RequestID string `json:"requestId"`
-}
-
-// PageLoadEventFired https://chromedevtools.github.io/devtools-protocol/tot/Page#event-loadEventFired
-type PageLoadEventFired struct {
-	Timestamp float64 `json:"timestamp"`
-}
-
-// PageDomContentEventFired https://chromedevtools.github.io/devtools-protocol/tot/Page#event-domContentEventFired
-type PageDomContentEventFired struct {
-	Timestamp float64 `json:"timestamp"`
-}
-
-// ResourceTiming https://chromedevtools.github.io/devtools-protocol/tot/Network#type-ResourceTiming
-type ResourceTiming struct {
-	RequestTime       float64 `json:"requestTime"`
-	ProxyStart        float64 `json:"proxyStart"`
-	ProxyEnd          float64 `json:"proxyEnd"`
-	DNSStart          float64 `json:"dnsStart"`
-	DNSEnd            float64 `json:"dnsEnd"`
-	ConnectStart      float64 `json:"connectStart"`
-	ConnectEnd        float64 `json:"connectEnd"`
-	SSLStart          float64 `json:"sslStart"`
-	SSLEnd            float64 `json:"sslEnd"`
-	WorkerStart       float64 `json:"workerStart"`
-	WorkerReady       float64 `json:"workerReady"`
-	SendStart         float64 `json:"sendStart"`
-	SendEnd           float64 `json:"sendEnd"`
-	PushStart         float64 `json:"pushStart"`
-	PushEnd           float64 `json:"pushEnd"`
-	ReceiveHeadersEnd float64 `json:"receiveHeadersEnd"`
-}
-
-// Response https://chromedevtools.github.io/devtools-protocol/tot/Network#type-Response
-type Response struct {
-	URL                string                 `json:"url"`
-	Status             int                    `json:"status"`
-	StatusText         string                 `json:"statusText"`
-	Headers            map[string]interface{} `json:"headers"`
-	HeadersText        string                 `json:"headersText"`
-	MimeType           string                 `json:"mimeType"`
-	RequestHeaders     map[string]interface{} `json:"requestHeaders"`
-	RequestHeadersText string                 `json:"requestHeadersText"`
-	ConnectionReused   bool                   `json:"connectionReused"`
-	ConnectionID       int64                  `json:"connectionId"`
-	RemoteIPAddress    string                 `json:"remoteIPAddress"`
-	RemotePort         int64                  `json:"remotePort"`
-	FromDiskCache      bool                   `json:"fromDiskCache"`
-	FromServiceWorker  bool                   `json:"fromServiceWorker"`
-	FromPrefetchCache  bool                   `json:"fromPrefetchCache"`
-	EncodedDataLength  int64                  `json:"encodedDataLength"`
-	Timing             *ResourceTiming        `json:"timing"`
-	Protocol           string                 `json:"protocol"`
-	SecurityState      string                 `json:"securityState"`
-}
-
-// LoadingFailed https://chromedevtools.github.io/devtools-protocol/tot/Network#event-loadingFailed
-type LoadingFailed struct {
-	RequestID     string  `json:"requestId"`
-	Timestamp     float64 `json:"timestamp"`
-	Type          string  `json:"type"`
-	ErrorText     string  `json:"errorText"`
-	Canceled      bool    `json:"canceled"`
-	BlockedReason string  `json:"blockedReason"`
-}
-
-// CookieParam https://chromedevtools.github.io/devtools-protocol/tot/Network#type-CookieParam
-type CookieParam struct {
-	Name     string `json:"name"`
-	Value    string `json:"value"`
-	URL      string `json:"url"`
-	Domain   string `json:"domain"`
-	Path     string `json:"path"`
-	Expires  int64  `json:"expires"`
-	Size     int64  `json:"size"`
-	HTTPOnly bool   `json:"httpOnly"`
-	Secure   bool   `json:"secure"`
-}
-
-// NetworkEnable ...
-func (session *Session) NetworkEnable() error {
-	_, err := session.blockingSend("Network.enable", &Params{
-		"maxPostDataSize": 1024,
-	})
-	return err
-}
+	"github.com/ecwid/cdp/pkg/devtool"
+)
 
 // ClearBrowserCookies ...
-func (session *Session) ClearBrowserCookies() error {
-	_, err := session.blockingSend("Network.clearBrowserCookies", &Params{})
-	return err
+func (net Network) ClearBrowserCookies() error {
+	return net.call("Network.clearBrowserCookies", nil, nil)
 }
 
 // SetCookies ...
-func (session *Session) SetCookies(cookies ...CookieParam) error {
-	_, err := session.blockingSend("Network.setCookies", &Params{"cookies": cookies})
-	return err
+func (net Network) SetCookies(cookies ...*devtool.Cookie) error {
+	return net.call("Network.setCookies", Map{"cookies": cookies}, nil)
+}
+
+// GetCookies returns all browser cookies for the current URL
+func (net Network) GetCookies(urls ...string) ([]*devtool.Cookie, error) {
+	p := Map{}
+	if urls != nil {
+		p["urls"] = urls
+	}
+	cookies := new(devtool.GetCookies)
+	err := net.call("Network.getCookies", p, cookies)
+	if err != nil {
+		return nil, err
+	}
+	return cookies.Cookies, nil
 }
 
 // SetExtraHTTPHeaders Specifies whether to always send extra HTTP headers with the requests from this page.
-func (session *Session) SetExtraHTTPHeaders(headers map[string]string) error {
-	_, err := session.blockingSend("Network.setExtraHTTPHeaders", &Params{"headers": headers})
-	return err
+func (net Network) SetExtraHTTPHeaders(headers map[string]string) error {
+	return net.call("Network.setExtraHTTPHeaders", Map{"headers": headers}, nil)
+}
+
+// SetOffline set offline/online mode
+// SetOffline(false) - reset all network conditions to default
+func (net Network) SetOffline(e bool) error {
+	return net.emulateNetworkConditions(e, 0, -1, -1)
+}
+
+// SetThrottling set latency in milliseconds, download & upload throttling in bytes per second
+func (net Network) SetThrottling(latencyMs, downloadThroughputBps, uploadThroughputBps int) error {
+	return net.emulateNetworkConditions(false, latencyMs, downloadThroughputBps, downloadThroughputBps)
+}
+
+// SetBlockedURLs ...
+func (net Network) SetBlockedURLs(urls []string) error {
+	return net.call("Network.setBlockedURLs", Map{"urls": urls}, nil)
+}
+
+// GetRequestPostData https://chromedevtools.github.io/devtools-protocol/tot/Network/#method-getRequestPostData
+func (net Network) GetRequestPostData(requestID string) (string, error) {
+	result := new(devtool.RequestPostData)
+	err := net.call("Network.getRequestPostData", Map{"requestId": requestID}, result)
+	if err != nil {
+		return "", err
+	}
+	return result.PostData, nil
+}
+
+// GetResponseBody https://chromedevtools.github.io/devtools-protocol/tot/Network/#method-getResponseBody
+func (net Network) GetResponseBody(requestID string) (string, error) {
+	result := new(devtool.ResponseBody)
+	err := net.call("Network.getResponseBody", Map{"requestId": requestID}, result)
+	if err != nil {
+		return "", err
+	}
+	if result.Base64Encoded {
+		b, err := base64.StdEncoding.DecodeString(result.Body)
+		return string(b), err
+	}
+	return result.Body, nil
+}
+
+func (net Network) emulateNetworkConditions(offline bool, latencyMs, downloadThroughputBps, uploadThroughputBps int) error {
+	p := Map{
+		"offline":            offline,
+		"latency":            latencyMs,
+		"downloadThroughput": downloadThroughputBps,
+		"uploadThroughput":   uploadThroughputBps,
+	}
+	return net.call("Network.emulateNetworkConditions", p, nil)
+}
+
+// fetchEnable https://chromedevtools.github.io/devtools-protocol/tot/Fetch#method-enable
+func (net Network) fetchEnable(patterns []*devtool.RequestPattern, handleAuthRequests bool) error {
+	return net.call("Fetch.enable", Map{
+		"patterns":           patterns,
+		"handleAuthRequests": handleAuthRequests,
+	}, nil)
+}
+
+// fetchDisable https://chromedevtools.github.io/devtools-protocol/tot/Fetch#method-disable
+func (net Network) fetchDisable() error {
+	return net.call("Fetch.disable", nil, nil)
+}
+
+// Fail https://chromedevtools.github.io/devtools-protocol/tot/Fetch#method-failRequest
+func (net Interceptor) Fail(requestID string, reason devtool.ErrorReason) error {
+	return net.call("Fetch.failRequest", Map{
+		"requestId":   requestID,
+		"errorReason": string(reason),
+	}, nil)
+}
+
+// Fulfill https://chromedevtools.github.io/devtools-protocol/tot/Fetch#method-fulfillRequest
+func (net Interceptor) Fulfill(
+	requestID string,
+	responseCode int,
+	responseHeaders []*devtool.HeaderEntry,
+	body *string,
+	responsePhrase *string) error {
+	p := Map{
+		"requestId":    requestID,
+		"responseCode": responseCode,
+	}
+	if responseHeaders != nil {
+		p["responseHeaders"] = responseHeaders
+	}
+	if body != nil {
+		p["body"] = body
+	}
+	if responsePhrase != nil {
+		p["responsePhrase"] = responsePhrase
+	}
+	return net.call("Fetch.fulfillRequest", p, nil)
+}
+
+// Continue https://chromedevtools.github.io/devtools-protocol/tot/Fetch#method-continueRequest
+func (net Interceptor) Continue(requestID string, url *string, method *string, postData *string, headers []*devtool.HeaderEntry) error {
+	p := Map{"requestId": requestID}
+	if url != nil {
+		p["url"] = url
+	}
+	if method != nil {
+		p["method"] = method
+	}
+	if postData != nil {
+		p["postData"] = postData
+	}
+	if headers != nil {
+		p["headers"] = headers
+	}
+	return net.call("Fetch.continueRequest", p, nil)
+}
+
+// Interceptor ...
+type Interceptor struct {
+	*Network
+}
+
+// Intercept ...
+func (net Network) Intercept(patterns []*devtool.RequestPattern, fn func(*devtool.RequestPaused, *Interceptor)) func() {
+	unsubscribe := net.Subscribe("Fetch.requestPaused", func(e *Event) {
+		request := new(devtool.RequestPaused)
+		if err := json.Unmarshal(e.Params, request); err != nil {
+			net.close(err)
+			return
+		}
+		go fn(request, &Interceptor{Network: &net})
+	})
+	if err := net.fetchEnable(patterns, false); err != nil {
+		net.close(err)
+	}
+	return func() {
+		unsubscribe()
+		if err := net.fetchDisable(); err != nil {
+			net.close(err)
+		}
+	}
 }

@@ -1,223 +1,64 @@
 package cdp
 
-// Node https://chromedevtools.github.io/devtools-protocol/tot/DOM#type-Node
-type Node struct {
-	NodeID           int64    `json:"nodeId"`
-	ParentID         int64    `json:"parentId"`
-	BackendNodeID    int64    `json:"backendNodeId"`
-	NodeType         int64    `json:"nodeType"`
-	NodeName         string   `json:"nodeName"`
-	LocalName        string   `json:"localName"`
-	NodeValue        string   `json:"nodeValue"`
-	ChildNodeCount   int64    `json:"childNodeCount"`
-	Children         []*Node  `json:"children"`
-	Attributes       []string `json:"attributes"`
-	DocumentURL      string   `json:"documentURL"`
-	BaseURL          string   `json:"baseURL"`
-	PublicID         string   `json:"publicId"`
-	SystemID         string   `json:"systemId"`
-	InternalSubset   string   `json:"internalSubset"`
-	XMLVersion       string   `json:"xmlVersion"`
-	Name             string   `json:"name"`
-	Value            string   `json:"value"`
-	PseudoType       string   `json:"pseudoType"`
-	ShadowRootType   string   `json:"shadowRootType"`
-	FrameID          string   `json:"frameId"`
-	ContentDocument  *Node    `json:"contentDocument"`
-	ShadowRoots      []*Node  `json:"shadowRoots"`
-	TemplateContent  *Node    `json:"templateContent"`
-	PseudoElements   []*Node  `json:"pseudoElements"`
-	ImportedDocument *Node    `json:"importedDocument"`
-	IsSVG            bool     `json:"isSVG"`
-}
+import (
+	"math"
 
-// EventListener https://chromedevtools.github.io/devtools-protocol/tot/DOMDebugger#type-EventListener
-type EventListener struct {
-	Type            string        `json:"type"`
-	UseCapture      bool          `json:"useCapture"`
-	Passive         bool          `json:"passive"`
-	Once            bool          `json:"once"`
-	ScriptID        string        `json:"scriptId"`
-	LineNumber      int64         `json:"lineNumber"`
-	ColumnNumber    int64         `json:"columnNumber"`
-	Handler         *RemoteObject `json:"handler"`
-	OriginalHandler *RemoteObject `json:"originalHandler"`
-	BackendNodeID   int64         `json:"backendNodeId"`
-}
+	"github.com/ecwid/cdp/pkg/devtool"
+)
 
-type quad []float64
-
-type highlightConfig struct {
-	ShowInfo           bool  `json:"showInfo,omitempty"`
-	ShowStyles         bool  `json:"showStyles,omitempty"`
-	ShowRulers         bool  `json:"showRulers,omitempty"`
-	ShowExtensionLines bool  `json:"showExtensionLines,omitempty"`
-	ContentColor       *rgba `json:"contentColor,omitempty"`
-	PaddingColor       *rgba `json:"paddingColor,omitempty"`
-	BorderColor        *rgba `json:"borderColor,omitempty"`
-	MarginColor        *rgba `json:"marginColor,omitempty"`
-	EventTargetColor   *rgba `json:"eventTargetColor,omitempty"`
-	ShapeColor         *rgba `json:"shapeColor,omitempty"`
-	ShapeMarginColor   *rgba `json:"shapeMarginColor,omitempty"`
-	CSSGridColor       *rgba `json:"cssGridColor,omitempty"`
-}
-
-// Rect https://chromedevtools.github.io/devtools-protocol/tot/DOM#type-Rect
-type Rect struct {
-	X      float64 `json:"x"`
-	Y      float64 `json:"y"`
-	Width  float64 `json:"width"`
-	Height float64 `json:"height"`
-}
-
-type rgba struct {
-	R int64   `json:"r"`
-	G int64   `json:"g"`
-	B int64   `json:"b"`
-	A float64 `json:"a,omitempty"`
-}
-
-func (q quad) middle() (float64, float64) {
-	x := 0.0
-	y := 0.0
-	for i := 0; i < 8; i += 2 {
-		x += q[i]
-		y += q[i+1]
-	}
-	return x / 4, y / 4
-}
-
-func (session *Session) focus(objectID string) error {
-	_, err := session.blockingSend("DOM.focus", &Params{"objectId": objectID})
-	return err
-}
-
-func (session *Session) getFrameOwner(frameID string) (int64, error) {
-	msg, err := session.blockingSend("DOM.getFrameOwner", &Params{"frameId": frameID})
-	if err != nil {
-		return 0, err
-	}
-	nbf := msg["backendNodeId"].(float64)
-	return int64(nbf), nil
-}
-
-func (session *Session) getNodeForLocation(x, y float64) (int64, error) {
-	msg, err := session.blockingSend("DOM.getNodeForLocation", &Params{
-		"x":                         x,
-		"y":                         y,
-		"includeUserAgentShadowDOM": true,
-	})
-	if err != nil {
-		return 0, err
-	}
-	nbf := msg["backendNodeId"].(float64)
-	return int64(nbf), nil
-}
-
-func (session *Session) describeNode(objectID string) (*Node, error) {
-	raw, err := session.blockingSend("DOM.describeNode", &Params{
+// GetNode ...
+func (d DOM) GetNode(objectID string) (*devtool.Node, error) {
+	p := Map{
 		"objectId": objectID,
 		"depth":    1,
-	})
-	if err != nil {
+	}
+	describeNode := new(devtool.DescribeNode)
+	if err := d.call("DOM.describeNode", p, describeNode); err != nil {
 		return nil, err
 	}
-	node := &Node{}
-	unmarshal(raw["node"], node)
-	return node, nil
+	return describeNode.Node, nil
 }
 
-func (session *Session) requestNode(objectID string) (int64, error) {
-	msg, err := session.blockingSend("DOM.requestNode", &Params{
-		"objectId": objectID,
-	})
-	if err != nil {
+func (d DOM) getFrameOwner(frameID string) (int64, error) {
+	result := Map{}
+	if err := d.call("DOM.getFrameOwner", Map{"frameId": frameID}, &result); err != nil {
 		return -1, err
 	}
-	return int64(msg["nodeId"].(float64)), nil
+	return int64(result["backendNodeId"].(float64)), nil
 }
 
-func (session *Session) resolveNode(backendNodeID int64) (*RemoteObject, error) {
-	raw, err := session.blockingSend("DOM.resolveNode", &Params{
-		"backendNodeId":      backendNodeID,
-		"executionContextId": session.contextID,
-	})
+// GetContentQuads ...
+func (d DOM) GetContentQuads(objectID string, viewportCorrection bool) (devtool.Quad, error) {
+	cq := new(devtool.ContentQuads)
+	if err := d.call("DOM.getContentQuads", Map{"objectId": objectID}, cq); err != nil {
+		return nil, err
+	}
+	calc := cq.Calc()
+	if len(calc) == 0 { // should be at least one
+		return nil, ErrElementInvisible
+	}
+	metric, err := d.getLayoutMetrics()
 	if err != nil {
 		return nil, err
 	}
-	ro := &RemoteObject{}
-	unmarshal(raw["object"], ro)
-	return ro, nil
-}
-
-func (session *Session) highlightNode(objectID string) error {
-	_, err := session.blockingSend("Overlay.highlightNode", &Params{
-		"objectId": objectID,
-		"highlightConfig": &highlightConfig{
-			ShowRulers:  true,
-			BorderColor: &rgba{R: 255, G: 1, B: 1},
-		},
-	})
-	return err
-}
-func (session *Session) highlightQuad(q quad, color *rgba) error {
-	_, err := session.blockingSend("Overlay.highlightQuad", &Params{
-		"quad":         q,
-		"outlineColor": color,
-	})
-	return err
-}
-
-func (session *Session) getContentQuads(backendNodeID int64, objectID string) (quad, error) {
-	params := &Params{}
-	if backendNodeID > 0 {
-		(*params)["backendNodeId"] = backendNodeID
+	for _, quad := range calc {
+		/* correction is get sub-quad of element that in viewport
+		 _______________  <- Viewport top
+		|  1 _______ 2  |
+		|   |visible|   | visible part of element
+		|__4|visible|3__| <- Viewport bottom
+		|   |invisib|   | this invisible part of element omits if viewportCorrection
+		|...............|
+		*/
+		if viewportCorrection {
+			for _, point := range quad {
+				point.X = math.Min(math.Max(point.X, 0), float64(metric.LayoutViewport.ClientWidth))
+				point.Y = math.Min(math.Max(point.Y, 0), float64(metric.LayoutViewport.ClientHeight))
+			}
+		}
+		if quad.Area() > 1 {
+			return quad, nil
+		}
 	}
-	if objectID != "" {
-		(*params)["objectId"] = objectID
-	}
-	obj, err := session.blockingSend("DOM.getContentQuads", params)
-	if err != nil {
-		return nil, err
-	}
-	qs := make([]quad, 0)
-	if len(qs) > 1 {
-		panic("todo few quads support")
-	}
-	unmarshal(obj["quads"], &qs)
-	return qs[0], nil
-}
-
-func (session *Session) setFileInputFiles(files []string, objectID string) error {
-	_, err := session.blockingSend("DOM.setFileInputFiles", &Params{
-		"files":    files,
-		"objectId": objectID,
-	})
-	return err
-}
-
-func (session *Session) getAttributes(nodeID int64) ([]string, error) {
-	msg, err := session.blockingSend("DOM.getAttributes", &Params{
-		"nodeId": nodeID,
-	})
-	if err != nil {
-		return nil, err
-	}
-	attributes := make([]string, 0)
-	unmarshal(msg["attributes"], &attributes)
-	return attributes, err
-}
-
-func (session *Session) getEventListeners(objectID string) ([]EventListener, error) {
-	raw, err := session.blockingSend("DOMDebugger.getEventListeners", &Params{
-		"objectId": objectID,
-		"depth":    1,
-		"pierce":   true,
-	})
-	if err != nil {
-		return nil, err
-	}
-	events := make([]EventListener, 0)
-	unmarshal(raw["listeners"], &events)
-	return events, nil
+	return nil, ErrElementIsOutOfViewport
 }

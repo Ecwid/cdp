@@ -5,172 +5,286 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
+	"log"
+	"reflect"
 	"sync"
 	"time"
+
+	"github.com/ecwid/cdp/pkg/devtool"
 )
 
-// NavigationTimeout - navigation timeout
-var NavigationTimeout = time.Second * 40
+// Map ...
+type Map map[string]interface{}
 
-// WebSocketTimeout - web socket response timeout
-var WebSocketTimeout = time.Minute * 3
-
-// ErrSessionClosed current session (target) already closed
-var ErrSessionClosed = errors.New("session closed")
-
-// Session CDP session
+// Session ...
 type Session struct {
-	rw            sync.RWMutex
-	client        *Client
-	sessionID     string
-	targetID      string
-	contextID     int64
-	frameID       string
-	incomingEvent chan MessageResult // queue of incoming events from browser
-	callbacks     map[string]*list.List
-	closed        chan bool
+	ws        *WSClient
+	id        string
+	targetID  string
+	frameID   string
+	rw        *sync.Mutex
+	frames    *sync.Map
+	listeners map[string]*list.List
+	broadcast chan *wsBroadcast
+	closed    chan struct{}
+	err       chan error
+	deadline  time.Duration
+	poll      time.Duration
 }
 
-func newSession(client *Client) *Session {
-	session := &Session{
-		client:        client,
-		incomingEvent: make(chan MessageResult, 2000),
-		callbacks:     make(map[string]*list.List),
-		closed:        make(chan bool, 1),
+func newSession(ws *WSClient) *Session {
+	return &Session{
+		id:        "",
+		ws:        ws,
+		rw:        &sync.Mutex{},
+		frames:    &sync.Map{},
+		listeners: make(map[string]*list.List),
+		broadcast: make(chan *wsBroadcast, 10),
+		closed:    make(chan struct{}, 1),
+		err:       make(chan error, 1),
+		deadline:  60 * time.Second,
+	}
+}
+
+// Session ...
+func (c Browser) Session() (*Session, error) {
+	var sess = newSession(c.GetWSClient())
+	targets, err := sess.GetTargets()
+	if err != nil {
+		return nil, err
+	}
+	for _, t := range targets {
+		if t.Type == "page" {
+			return sess, sess.start(t.TargetID)
+		}
+	}
+	return nil, ErrNoPageTarget
+}
+
+// NewSession ...
+func NewSession(session *Session, target string) (newsess *Session, err error) {
+	newsess = newSession(session.ws)
+	err = newsess.start(target)
+	return
+}
+
+// ID session's ID
+func (session Session) ID() string {
+	return session.id
+}
+
+func (session Session) close(err error) {
+	select {
+	case <-session.closed:
+		return
+	case session.err <- err:
+	default:
+	}
+	close(session.closed)
+}
+
+func (session *Session) start(targetID string) error {
+	if err := session.call("Target.setDiscoverTargets", Map{"discover": true}, nil); err != nil {
+		return err
+	}
+	var result = make(Map)
+	err := session.call("Target.attachToTarget", Map{"targetId": targetID, "flatten": true}, &result)
+	if err != nil {
+		return err
+	}
+	session.targetID = targetID
+	session.id = result["sessionId"].(string)
+	if session.id == "" {
+		return errors.New("attachToTarget session is nil")
 	}
 	go session.listener()
-	return session
-}
-
-// Client get client associated with this session
-func (session *Session) Client() *Client {
-	return session.client
-}
-
-func (session *Session) switchContext(frameID string) error {
-	session.frameID = frameID
-	var err error
-	session.contextID, err = session.createIsolatedWorld(frameID)
-	return err
-}
-
-func unmarshal(source interface{}, dest interface{}) {
-	str, err := json.Marshal(source)
-	if err != nil {
-		panic(err) // Fatal Error in Protocol
-	}
-	if err = json.Unmarshal([]byte(str), dest); err != nil {
-		panic(err) // Fatal Error in Protocol
-	}
-}
-
-// ID session's id
-func (session *Session) ID() string {
-	return session.sessionID
-}
-
-// SwitchToFrame switch context to frame
-func (session *Session) SwitchToFrame(selector string) error {
-	el, err := session.findElement(selector)
-	if err != nil {
+	session.ws.subscribe(session.id, session.broadcast)
+	if err = session.call("Page.enable", nil, nil); err != nil {
 		return err
 	}
-	node, err := session.describeNode(el)
-	if err != nil {
+	if err = session.call("Runtime.enable", nil, nil); err != nil {
 		return err
 	}
-	if "IFRAME" != node.NodeName {
-		return errors.New(`Selector ` + selector + ` must be IFRAME`)
-	}
-	return session.switchContext(node.FrameID)
-}
-
-// MainFrame switch context to main frame
-func (session *Session) MainFrame() error {
-	return session.switchContext(session.targetID)
-}
-
-// Navigate navigate to
-func (session *Session) Navigate(urlStr string) error {
-	eventFired := make(chan bool)
-	unsubscribe := session.Subscribe("Page.domContentEventFired", func(params Params) {
-		eventFired <- true
-	})
-	defer unsubscribe()
-	nav, err := session.navigate(urlStr, session.frameID)
-	if err != nil {
+	// maxPostDataSize - Longest post body size (in bytes) that would be included in requestWillBeSent notification
+	if err = session.call("Runtime.enable", Map{"maxPostDataSize": 1024}, nil); err != nil {
 		return err
 	}
-	if nav.ErrorText != "" {
-		return errors.New(nav.ErrorText)
-	}
-	if nav.LoaderID == "" {
-		close(eventFired)
-	}
-	select {
-	case <-eventFired:
-	case <-time.After(NavigationTimeout):
-		return errors.New("navigate '" + urlStr + "' reached timeout")
-	}
-	return session.switchContext(nav.FrameID)
-}
-
-// Reload refresh current page ignores cache
-func (session *Session) Reload() error {
-	eventFired := make(chan bool)
-	unsubscribe := session.Subscribe("Page.domContentEventFired", func(params Params) {
-		eventFired <- true
-	})
-	defer unsubscribe()
-	if err := session.reload(); err != nil {
-		return err
-	}
-	select {
-	case <-eventFired:
-	case <-time.After(NavigationTimeout):
-		return errors.New("reload reached timeout")
-	}
-	session.MainFrame()
+	// context is may not be created yet
+	_ = session.setFrame(session.targetID)
 	return nil
 }
 
-// Close close this sessions
-func (session *Session) Close() (bool, error) {
-	return session.closeTarget(session.targetID)
-}
+func (session Session) listener() {
+	for e := range session.broadcast {
 
-// GetScreenshot get screen of current page
-func (session *Session) GetScreenshot(format ImageFormat, quality int8, clip *Viewport, fullPage bool) ([]byte, error) {
-	session.activateTarget(session.targetID)
-	if fullPage {
-		view, err := session.getLayoutMetrics()
-		if err != nil {
-			return nil, err
+		if e.Error != "" {
+			session.close(errors.New(e.Error))
+			return
 		}
-		defer session.clearDeviceMetricsOverride()
-		session.setDeviceMetricsOverride(int64(math.Ceil(view.ContentSize.Width)), int64(math.Ceil(view.ContentSize.Height)), 1)
+
+		session.rw.Lock()
+		if list, has := session.listeners[e.Method]; has {
+			for p := list.Front(); p != nil; p = p.Next() {
+				p.Value.(func(*Event))(&e.Event)
+			}
+		}
+		session.rw.Unlock()
+
+		switch e.Method {
+		case "Runtime.executionContextsCleared":
+			session.frames.Range(func(k interface{}, v interface{}) bool {
+				session.frames.Delete(k)
+				return true
+			})
+
+		case "Runtime.executionContextCreated":
+			c := new(devtool.ExecutionContextCreated)
+			if err := json.Unmarshal(e.Params, c); err != nil {
+				session.close(err)
+				return
+			}
+			log.Printf("%s -> %d", c.Context.AuxData["frameId"].(string), c.Context.ID)
+			session.frames.Store(c.Context.AuxData["frameId"].(string), c.Context.ID)
+
+		case "Runtime.executionContextDestroyed":
+			c := new(devtool.ExecutionContextDestroyed)
+			if err := json.Unmarshal(e.Params, c); err != nil {
+				session.close(err)
+				return
+			}
+			session.frames.Range(func(k interface{}, v interface{}) bool {
+				if v.(int64) == c.ExecutionContextID {
+					session.frames.Delete(k)
+					return false
+				}
+				return true
+			})
+
+		case "Target.targetCrashed":
+			c := new(devtool.TargetCrashed)
+			if err := json.Unmarshal(e.Params, c); err != nil {
+				session.close(err)
+				return
+			}
+			session.close(errors.New(string(e.Params)))
+			return
+
+		case "Target.targetDestroyed":
+			c := new(devtool.TargetDestroyed)
+			if err := json.Unmarshal(e.Params, c); err != nil {
+				session.close(err)
+				return
+			}
+			if c.TargetID == session.targetID {
+				session.close(nil)
+				session.ws.unsubscribe(session.id)
+				return
+			}
+		}
 	}
-	return session.captureScreenshot(format, quality, clip)
 }
 
-// TargetCreated subscribe to targetCreated event
-func (session *Session) TargetCreated() chan *TargetInfo {
-	message := make(chan *TargetInfo)
-	var unsubscribe func()
-	unsubscribe = session.Subscribe("Target.targetCreated", func(msg Params) {
-		targetInfo := &TargetInfo{}
-		unmarshal(msg["targetInfo"], targetInfo)
-		if targetInfo.Type == "page" {
-			message <- targetInfo
-			unsubscribe()
+func (session Session) blockingSend(method string, params interface{}) ([]byte, error) {
+	recv := session.ws.sendOverProtocol(session.id, method, params)
+	select {
+	case err := <-session.err:
+		return nil, err
+	case <-session.closed:
+		return nil, ErrSessionClosed
+	case response := <-recv:
+		if response.Error.Code != 0 {
+			return nil, response.Error
 		}
-	})
-	return message
+		return response.Result, nil
+	case <-time.After(session.deadline):
+		return nil, fmt.Errorf("websocket response timeout was reached %s for %s(%+v)", session.deadline.String(), method, params)
+	}
 }
 
-// IsClosed is session closed?
-func (session *Session) IsClosed() bool {
+func (session Session) withDeadline(c chan struct{}) error {
+	select {
+	case <-c:
+		return nil
+	case err := <-session.err:
+		return err
+	case <-session.closed:
+		return ErrSessionClosed
+	case <-time.After(session.deadline):
+		return ErrTimeout
+	}
+}
+
+func (session Session) call(method string, req interface{}, resp interface{}) error {
+	b, err := session.blockingSend(method, req)
+	if err != nil {
+		return err
+	}
+	if resp == nil || (reflect.ValueOf(resp).Kind() == reflect.Ptr && reflect.ValueOf(resp).IsNil()) {
+		return nil
+	}
+	return json.Unmarshal(b, resp)
+}
+
+// Subscribe subscribe to CDP event
+func (session *Session) Subscribe(method string, cb func(event *Event)) (unsubscribe func()) {
+	session.rw.Lock()
+	defer session.rw.Unlock()
+	if _, has := session.listeners[method]; !has {
+		session.listeners[method] = list.New()
+	}
+	p := session.listeners[method].PushBack(cb)
+	unsubscribe = func() {
+		session.rw.Lock()
+		defer session.rw.Unlock()
+		session.listeners[method].Remove(p)
+	}
+	return
+}
+
+// GetTargets ....
+func (session Session) GetTargets() ([]*devtool.TargetInfo, error) {
+	var info = new(devtool.TargetInfos)
+	if err := session.call("Target.getTargets", nil, &info); err != nil {
+		return nil, err
+	}
+	return info.TargetInfos, nil
+}
+
+func (session Session) executionContext() (int64, error) {
+	var id = session.frameID
+	if v, ok := session.frames.Load(id); ok {
+		return v.(int64), nil
+	}
+	if id == session.targetID {
+		// for main frame we can use default context with ID = 0
+		return 0, nil
+	}
+	return -1, ErrFrameDetached
+}
+
+// GetID ...
+func (session Session) GetID() string {
+	return session.id
+}
+
+// SetDeadline ...
+func (session *Session) SetDeadline(dl time.Duration) {
+	session.deadline = dl
+}
+
+// Close close this sessions
+func (session Session) Close() error {
+	err := session.call("Target.closeTarget", Map{"targetId": session.targetID}, nil)
+	// event 'Target.targetDestroyed' can be received early than message response
+	if err != nil && err != ErrSessionClosed {
+		return err
+	}
+	session.close(nil)
+	return nil
+}
+
+// IsClosed check is session (tab) closed
+func (session Session) IsClosed() bool {
 	select {
 	case <-session.closed:
 		return true
@@ -179,128 +293,37 @@ func (session *Session) IsClosed() bool {
 	}
 }
 
-// Script evaluate javascript code at context of web page synchronously
-func (session *Session) Script(code string) (interface{}, error) {
-	result, err := session.Evaluate(code, 0)
-	if err != nil {
-		return "", err
-	}
-	return result.Value, nil
+// WaitElement ...
+func (session Session) WaitElement(selector string) (*Element, error) {
+	el, err := session.Ticker(func() (interface{}, error) {
+		return session.Query(selector)
+	})
+	return el.(*Element), err
 }
 
-// CallScriptOn evaluate javascript code on element
-// executed as function() { `script` }, for access to element use `this`
-// for example script = `this.innerText = "test"`
-func (session *Session) CallScriptOn(selector, script string) (interface{}, error) {
-	element, err := session.findElement(selector)
-	if err != nil {
-		return nil, err
+// Ticker ...
+func (session Session) Ticker(call func() (interface{}, error)) (interface{}, error) {
+	var (
+		err error
+		v   interface{}
+	)
+	if v, err = call(); err == nil {
+		return v, nil
 	}
-	defer session.release(element)
-	result, err := session.callFunctionOn(element, `function(){`+script+`}`)
-	if err != nil {
-		return "", err
-	}
-	return result.Value, nil
-}
-
-// URL get current tab's url
-func (session *Session) URL() (string, error) {
-	history, err := session.getNavigationHistory()
-	if err != nil {
-		return "", err
-	}
-	if history.CurrentIndex == -1 {
-		return "about:blank", nil
-	}
-	return history.Entries[history.CurrentIndex].URL, nil
-}
-
-// Title get current tab's title
-func (session *Session) Title() (string, error) {
-	history, err := session.getNavigationHistory()
-	if err != nil || history.CurrentIndex == -1 {
-		return "", err
-	}
-	return history.Entries[history.CurrentIndex].Title, nil
-}
-
-func (session *Session) listener() {
-	var method string
-	for e := range session.incomingEvent {
-
-		method = e["method"].(string)
-		session.rw.RLock()
-		lst, has := session.callbacks[method]
-		session.rw.RUnlock()
-		if has {
-			for p := lst.Front(); p != nil; p = p.Next() {
-				p.Value.(func(Params))(e["params"].(Params))
+	var (
+		poll     = time.NewTicker(session.poll)
+		deadline = time.NewTimer(session.deadline)
+	)
+	defer poll.Stop()
+	defer deadline.Stop()
+	for {
+		select {
+		case <-deadline.C:
+			return nil, err
+		case <-poll.C:
+			if v, err = call(); err == nil {
+				return v, nil
 			}
 		}
-
-		switch method {
-		case "Runtime.executionContextsCleared":
-			session.contextID = 0
-
-		case "Runtime.executionContextCreated":
-			desc := &ExecutionContextDescription{}
-			unmarshal(e["params"].(map[string]interface{})["context"], desc)
-			frameID := desc.AuxData["frameId"].(string)
-			if session.frameID == frameID {
-				session.contextID = desc.ID
-			}
-
-		case "Runtime.executionContextDestroyed":
-			executionContextID := e["params"].(map[string]interface{})["executionContextId"]
-			if session.contextID == executionContextID {
-				session.contextID = 0
-			}
-
-		case "Target.targetCrashed":
-			crashed := &targetCrashed{}
-			unmarshal(e["params"], crashed)
-			panic(crashed.Status)
-
-		case "Target.targetDestroyed":
-			targetID := e["params"].(Params)["targetId"].(string)
-			if targetID == session.targetID {
-				close(session.closed)
-				session.client.deleteSession(session.sessionID)
-				return
-			}
-		}
-	}
-}
-
-func (session *Session) blockingSend(method string, params *Params) (MessageResult, error) {
-	recv := session.client.sendMethod(session.sessionID, method, params)
-	select {
-	case resp := <-recv:
-		if obj, has := resp["error"]; has {
-			mes := obj.(Params)["message"].(string)
-			return nil, errors.New(mes)
-		}
-		return resp["result"].(MessageResult), nil
-	case <-session.closed:
-		return nil, ErrSessionClosed
-	case <-time.After(WebSocketTimeout):
-		return nil, fmt.Errorf("websocket response reached timeout %s for %s -> %+v", WebSocketTimeout.String(), method, params)
-	}
-}
-
-// Subscribe subscribe to CDP event
-func (session *Session) Subscribe(method string, callback func(params Params)) (unsubscribe func()) {
-	session.rw.Lock()
-	if _, has := session.callbacks[method]; !has {
-		session.callbacks[method] = list.New()
-	}
-	p := session.callbacks[method].PushBack(callback)
-	session.rw.Unlock()
-
-	return func() {
-		session.rw.Lock()
-		session.callbacks[method].Remove(p)
-		session.rw.Unlock()
 	}
 }

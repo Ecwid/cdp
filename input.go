@@ -4,61 +4,78 @@ import "time"
 
 // Input events
 const (
-	DispatchKeyEventChar       = "char"
-	DispatchKeyEventKeyDown    = "keyDown"
-	DispatchKeyEventKeyUp      = "keyUp"
-	DispatchMouseEventMoved    = "mouseMoved"
-	DispatchMouseEventPressed  = "mousePressed"
-	DispatchMouseEventReleased = "mouseReleased"
+	dispatchKeyEventChar       = "char"
+	dispatchKeyEventKeyDown    = "keyDown"
+	dispatchKeyEventKeyUp      = "keyUp"
+	dispatchMouseEventMoved    = "mouseMoved"
+	dispatchMouseEventPressed  = "mousePressed"
+	dispatchMouseEventReleased = "mouseReleased"
 )
 
-func (session *Session) sendRune(c rune) error {
-	_, err := session.blockingSend("Input.dispatchKeyEvent", &Params{
-		"type":                  DispatchKeyEventKeyDown,
-		"windowsVirtualKeyCode": int(c),
-		"nativeVirtualKeyCode":  int(c),
-		"unmodifiedText":        string(c),
-		"text":                  string(c),
-	})
-	if err != nil {
-		return err
-	}
-	_, err = session.blockingSend("Input.dispatchKeyEvent", &Params{
-		"type":                  DispatchKeyEventKeyUp,
-		"windowsVirtualKeyCode": int(c),
-		"nativeVirtualKeyCode":  int(c),
-		"unmodifiedText":        string(c),
-		"text":                  string(c),
-	})
-	return err
+// MouseMove ...
+func (i Input) MouseMove(x, y float64) error {
+	return i.dispatchMouseEvent(x, y, dispatchMouseEventMoved, "none")
 }
 
-func (session *Session) dispatchKeyEvent(text string) error {
+func (i Input) sendRune(c rune) error {
+	if err := i.call("Input.dispatchKeyEvent", Map{
+		"type":                  dispatchKeyEventKeyDown,
+		"windowsVirtualKeyCode": int(c),
+		"nativeVirtualKeyCode":  int(c),
+		"unmodifiedText":        string(c),
+		"text":                  string(c),
+	}, nil); err != nil {
+		return err
+	}
+	return i.call("Input.dispatchKeyEvent", Map{
+		"type":                  dispatchKeyEventKeyUp,
+		"windowsVirtualKeyCode": int(c),
+		"nativeVirtualKeyCode":  int(c),
+		"unmodifiedText":        string(c),
+		"text":                  string(c),
+	}, nil)
+}
+
+func (i Input) dispatchKeyEvent(text string) error {
 	for _, c := range text {
 		time.Sleep(time.Millisecond * 10)
-		if _, err := session.blockingSend("Input.dispatchKeyEvent", &Params{
-			"type":                  DispatchKeyEventChar,
+		err := i.call("Input.dispatchKeyEvent", Map{
+			"type":                  dispatchKeyEventChar,
 			"windowsVirtualKeyCode": int(c),
 			"nativeVirtualKeyCode":  int(c),
 			"unmodifiedText":        string(c),
 			"text":                  string(c),
-		}); err != nil {
+		}, nil)
+		if err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (session *Session) insertText(text string) error {
-	_, err := session.blockingSend("Input.insertText", &Params{"text": text})
-	return err
+// InsertText method emulates inserting text that doesn't come from a key press, for example an emoji keyboard or an IME
+func (i Input) InsertText(text string) error {
+	return i.call("Input.insertText", Map{"text": text}, nil)
 }
-func (session *Session) dispatchMouseEvent(x float64, y float64, eventType string, button string) {
-	_, _ = session.blockingSend("Input.dispatchMouseEvent", &Params{
+
+func (i Input) dispatchMouseEvent(x float64, y float64, eventType string, button string) error {
+	return i.call("Input.dispatchMouseEvent", Map{
 		"type":       eventType,
 		"button":     button,
 		"x":          x,
 		"y":          y,
 		"clickCount": 1,
-	})
+	}, nil)
+}
+
+// SendKeys send keyboard keys to focused element
+func (i Input) SendKeys(key ...rune) error {
+	var err error
+	for _, k := range key {
+		err = i.sendRune(k)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
