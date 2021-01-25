@@ -29,18 +29,15 @@ func newElement(s *Session, parent *Element, ID string) (*Element, error) {
 }
 
 // Detached ...
-func (e *Element) Detached() bool {
-	c, err := e.session.executionContext()
-	if err != nil {
-		return true
-	}
-	return e.context != c
-}
+// func (e *Element) Detached() bool {
+// 	c, err := e.session.executionContext()
+// 	if err != nil {
+// 		return true
+// 	}
+// 	return e.context != c
+// }
 
 func (e *Element) call(functionDeclaration string, arg ...interface{}) (*devtool.RemoteObject, error) {
-	if e.Detached() {
-		return nil, ErrElementDetached
-	}
 	return e.session.callFunctionOn(e.ID, functionDeclaration, arg...)
 }
 
@@ -103,20 +100,23 @@ func (e *Element) Click() error {
 	if err = e.session.dispatchMouseEvent(x, y, dispatchMouseEventReleased, "left"); err != nil {
 		return err
 	}
-	hit, err := e.call(atom.ClickHitReturn)
-	// in case when click is initiate navigation which destroyed context of element (ErrElementDetached)
-	// or click may closes a popup (ErrSessionClosed)
-	switch err {
-	case ErrElementDetached, ErrSessionClosed:
-		return nil
-	case nil:
-		if hit.Bool() {
+	ok, err := e.call(atom.ClickDone)
+	if err == nil {
+		if ok.Bool() {
 			return nil
 		}
 		return ErrClickFailed
-	default:
-		return err
 	}
+	if err == ErrSessionClosed {
+		return nil
+	}
+	switch err1 := err.(type) {
+	case wsError:
+		if err1.Code == -32000 { // element was detached
+			return nil
+		}
+	}
+	return err
 }
 
 // GetFrameID get if for IFRAME element

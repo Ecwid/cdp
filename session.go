@@ -90,7 +90,6 @@ func (session Session) close(err error) {
 	case session.err <- err:
 	default:
 	}
-	close(session.closed)
 }
 
 func (session *Session) start(targetID string) error {
@@ -107,7 +106,7 @@ func (session *Session) start(targetID string) error {
 	session.id = result["sessionId"].(string)
 
 	go session.listener()
-	session.ws.subscribe(session.id, session.broadcast)
+	session.ws.register(session.id, session.broadcast)
 	if err = session.call("Page.enable", nil, nil); err != nil {
 		return err
 	}
@@ -183,7 +182,7 @@ func (session Session) listener() {
 			}
 			if c.TargetID == session.targetID {
 				session.close(nil)
-				session.ws.unsubscribe(session.id)
+				session.ws.unregister(session.id)
 				return
 			}
 		}

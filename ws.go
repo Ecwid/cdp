@@ -26,18 +26,18 @@ const (
 
 // WSClient ...
 type WSClient struct {
-	WebSocketURL string
-	conn         *websocket.Conn
-	sendMx       *sync.Mutex
-	sessMx       *sync.Mutex
-	send         chan []byte
-	receive      map[int64]chan *wsResponse
-	listeners    map[string]chan *wsBroadcast
-	disconnected chan struct{}
-	err          chan error
-	messID       int64
-	out          *log.Logger
-	outLevel     wLogLevel
+	WebSocketURL  string
+	conn          *websocket.Conn
+	id            int64
+	queueMutex    *sync.Mutex
+	sessionsMutex *sync.Mutex
+	send          chan []byte
+	receive       map[int64]chan *wsResponse
+	listeners     map[string]chan *wsBroadcast
+	disconnected  chan struct{}
+	err           chan error
+	out           *log.Logger
+	outLevel      wLogLevel
 }
 
 type wsError struct {
@@ -111,17 +111,17 @@ func NewWebSocketClient(webSocketURL string) (*WSClient, error) {
 		return nil, err
 	}
 	ws := &WSClient{
-		WebSocketURL: webSocketURL,
-		conn:         conn,
-		sendMx:       &sync.Mutex{},
-		sessMx:       &sync.Mutex{},
-		send:         make(chan []byte),
-		receive:      make(map[int64]chan *wsResponse, 1),
-		disconnected: make(chan struct{}, 1),
-		listeners:    make(map[string]chan *wsBroadcast, 1),
-		messID:       0,
-		out:          log.New(os.Stderr, "", log.LstdFlags),
-		outLevel:     LevelProtocolErrors,
+		WebSocketURL:  webSocketURL,
+		conn:          conn,
+		queueMutex:    &sync.Mutex{},
+		sessionsMutex: &sync.Mutex{},
+		send:          make(chan []byte),
+		receive:       make(map[int64]chan *wsResponse, 1),
+		disconnected:  make(chan struct{}, 1),
+		listeners:     make(map[string]chan *wsBroadcast, 1),
+		id:            0,
+		out:           log.New(os.Stderr, "", log.LstdFlags),
+		outLevel:      LevelProtocolErrors,
 	}
 	go ws.writer()
 	go ws.reader()
@@ -145,14 +145,15 @@ func (w WSClient) printf(level wLogLevel, format string, v ...interface{}) {
 	}
 }
 
-func (w *WSClient) sendOverProtocol(sessionID string, method string, params interface{}) (response chan *wsResponse) {
-	w.sendMx.Lock()
-	w.messID++
-	response = make(chan *wsResponse, 1)
-	w.receive[w.messID] = response
-	w.sendMx.Unlock()
+func (w *WSClient) sendOverProtocol(sessionID string, method string, params interface{}) chan *wsResponse {
+	w.queueMutex.Lock()
+	w.id++
+	response := make(chan *wsResponse, 1)
+	w.receive[w.id] = response
+	w.queueMutex.Unlock()
+
 	request, err := json.Marshal(wsMessage{
-		ID:        w.messID,
+		ID:        w.id,
 		SessionID: sessionID,
 		Method:    method,
 		Params:    params,
@@ -160,26 +161,28 @@ func (w *WSClient) sendOverProtocol(sessionID string, method string, params inte
 	if err != nil {
 		w.printf(LevelProtocolFatal, err.Error())
 		response <- &wsResponse{Error: wsError{Message: err.Error()}}
-		return
+		return response
 	}
+
 	select {
 	case w.send <- request:
 	case <-w.disconnected:
 	}
-	return
+
+	return response
 }
 
 // Subscribe ...
-func (w *WSClient) subscribe(sessionID string, events chan *wsBroadcast) {
-	w.sessMx.Lock()
-	defer w.sessMx.Unlock()
+func (w *WSClient) register(sessionID string, events chan *wsBroadcast) {
+	w.sessionsMutex.Lock()
+	defer w.sessionsMutex.Unlock()
 	w.listeners[sessionID] = events
 }
 
 // Unsubscribe ...
-func (w *WSClient) unsubscribe(sessionID string) {
-	w.sessMx.Lock()
-	defer w.sessMx.Unlock()
+func (w *WSClient) unregister(sessionID string) {
+	w.sessionsMutex.Lock()
+	defer w.sessionsMutex.Unlock()
 	delete(w.listeners, sessionID)
 }
 
@@ -213,31 +216,22 @@ func (w *WSClient) writer() {
 }
 
 func (w *WSClient) publish(response *wsResponse) {
-	var b = &wsBroadcast{
+	var event = &wsBroadcast{
 		Event: Event{
 			Method: response.Method,
 			Params: response.Params,
 		},
 		Error: response.Error.Message,
 	}
-	w.sessMx.Lock()
-	defer w.sessMx.Unlock()
+	w.sessionsMutex.Lock()
+	defer w.sessionsMutex.Unlock()
 	if response.SessionID != "" {
-		w.listeners[response.SessionID] <- b
+		w.listeners[response.SessionID] <- event
 	} else {
 		for _, v := range w.listeners {
-			v <- b
+			v <- event
 		}
 	}
-}
-
-func (w *WSClient) received(response *wsResponse) {
-	w.sendMx.Lock()
-	if recv, has := w.receive[response.ID]; has {
-		recv <- response
-		delete(w.receive, response.ID)
-	}
-	w.sendMx.Unlock()
 }
 
 func (w *WSClient) reader() {
@@ -268,7 +262,12 @@ func (w *WSClient) reader() {
 			} else {
 				w.printf(LevelProtocolMessage, "\033[1;34mrecv <- %s\033[0m", string(body))
 			}
-			w.received(response)
+			w.queueMutex.Lock()
+			if recv, has := w.receive[response.ID]; has {
+				recv <- response
+				delete(w.receive, response.ID)
+			}
+			w.queueMutex.Unlock()
 		}
 	}
 }

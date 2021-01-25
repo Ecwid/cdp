@@ -18,7 +18,7 @@ func (e NoSuchElementError) Error() string {
 
 // cdp errors
 var (
-	ErrElementDetached        = errors.New("referenced element is no longer attached to the DOM")
+	// ErrElementDetached        = errors.New("referenced element is no longer attached to the DOM")
 	ErrNoSuchFrame            = errors.New("no such frame")
 	ErrFrameDetached          = errors.New("frame you working on was detached")
 	ErrNoPageTarget           = errors.New("no one page target")

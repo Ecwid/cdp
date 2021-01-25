@@ -32,7 +32,7 @@ func Te1stFrameRefresh(t *testing.T) {
 	check(t, finp.Type("123456"))
 	check(t, get("#refresh").Click())
 	time.Sleep(time.Second * 2)
-	if err := finp.Type("654321"); err != cdp.ErrElementDetached {
+	if err := finp.Type("654321"); err == nil {
 		t.Fatalf("not expected error: %s", err.Error())
 	}
 }
