@@ -28,8 +28,8 @@ const (
 type WSClient struct {
 	WebSocketURL string
 	conn         *websocket.Conn
-	sendMx       sync.Mutex
-	sessMx       sync.Mutex
+	sendMx       *sync.Mutex
+	sessMx       *sync.Mutex
 	send         chan []byte
 	receive      map[int64]chan *wsResponse
 	listeners    map[string]chan *wsBroadcast
@@ -113,6 +113,8 @@ func NewWebSocketClient(webSocketURL string) (*WSClient, error) {
 	ws := &WSClient{
 		WebSocketURL: webSocketURL,
 		conn:         conn,
+		sendMx:       &sync.Mutex{},
+		sessMx:       &sync.Mutex{},
 		send:         make(chan []byte),
 		receive:      make(map[int64]chan *wsResponse, 1),
 		disconnected: make(chan struct{}, 1),
@@ -136,7 +138,7 @@ func (w *WSClient) SetLogLevel(level wLogLevel) {
 	w.outLevel = level
 }
 
-func (w *WSClient) printf(level wLogLevel, format string, v ...interface{}) {
+func (w WSClient) printf(level wLogLevel, format string, v ...interface{}) {
 	if level&w.outLevel == level {
 		_, fn, line, _ := runtime.Caller(1)
 		w.out.Printf("%s:%d %s", fn, line, fmt.Sprintf(format, v...))
@@ -244,7 +246,6 @@ func (w *WSClient) reader() {
 		if err != nil {
 			switch err.(type) {
 			case *websocket.CloseError:
-				w.printf(LevelProtocolErrors, err.Error())
 				close(w.disconnected)
 				// do nothing, browser was closed
 				return

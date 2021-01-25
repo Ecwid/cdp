@@ -292,7 +292,7 @@ func (session Session) WaitElement(selector string) (*Element, error) {
 	var ret *Element
 	return ret, NewTicker(session.deadline, 500*time.Millisecond, func() (err error) {
 		ret, err = session.Query(selector)
-		return
+		return err
 	})
 }
 
