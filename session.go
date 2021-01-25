@@ -47,16 +47,28 @@ func newSession(ws *WSClient) *Session {
 // Session ...
 func (c Browser) Session() (*Session, error) {
 	var sess = newSession(c.GetWSClient())
-	targets, err := sess.GetTargets()
-	if err != nil {
-		return nil, err
-	}
-	for _, t := range targets {
-		if t.Type == "page" {
-			return sess, sess.start(t.TargetID)
+	var (
+		retry    = time.NewTicker(250 * time.Millisecond)
+		deadline = time.NewTimer(10 * time.Second)
+	)
+	defer retry.Stop()
+	defer deadline.Stop()
+	for {
+		select {
+		case <-deadline.C:
+			return nil, ErrNoPageTarget
+		case <-retry.C:
+			targets, err := sess.GetTargets()
+			if err != nil {
+				return nil, err
+			}
+			for _, t := range targets {
+				if t.Type == "page" {
+					return sess, sess.start(t.TargetID)
+				}
+			}
 		}
 	}
-	return nil, ErrNoPageTarget
 }
 
 // NewSession ...
@@ -282,35 +294,5 @@ func (session Session) IsClosed() bool {
 		return true
 	default:
 		return false
-	}
-}
-
-// WaitElement ...
-func (session Session) WaitElement(selector string) (*Element, error) {
-	var ret *Element
-	return ret, NewTicker(session.deadline, 500*time.Millisecond, func() (err error) {
-		ret, err = session.Query(selector)
-		return err
-	})
-}
-
-// NewTicker ...
-func NewTicker(deadline, poll time.Duration, call func() error) (err error) {
-	if err = call(); err == nil {
-		return nil
-	}
-	var ticker = time.NewTicker(poll)
-	var timeout = time.NewTimer(deadline)
-	defer ticker.Stop()
-	defer timeout.Stop()
-	for {
-		select {
-		case <-timeout.C:
-			return err
-		case <-ticker.C:
-			if err = call(); err == nil {
-				return nil
-			}
-		}
 	}
 }

@@ -27,7 +27,7 @@ func TestNew5TabOpen(t *testing.T) {
 	}
 	sess.SetTimeout(time.Millisecond * 4000)
 	s2, err := sess.OnTargetCreated(func() {
-		e, err := sess.WaitElement("#newtabs")
+		e, err := sess.Query("#newtabs")
 		if err != nil {
 			t.Fatal(err)
 		}

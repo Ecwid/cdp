@@ -27,7 +27,8 @@ func main() {
 	sess.SetTimeout(time.Second * 30)
 	sess.Navigate("https://mdemo.ecwid.com/")
 
-	sess.WaitElement(".ec-static-container .grid-product")
+	time.Sleep(time.Second * 3)
+
 	all, err := sess.QueryAll(".ec-static-container .grid-product")
 	if err != nil {
 		panic(err)
