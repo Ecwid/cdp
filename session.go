@@ -36,7 +36,7 @@ func newSession(ws *WSClient) *Session {
 		ws:        ws,
 		rw:        &sync.Mutex{},
 		frames:    &sync.Map{},
-		listeners: make(map[string]*list.List),
+		listeners: map[string]*list.List{},
 		broadcast: make(chan *wsBroadcast, 10),
 		closed:    make(chan struct{}, 1),
 		err:       make(chan error, 1),
@@ -228,12 +228,11 @@ func (session *Session) Subscribe(method string, cb func(event *Event)) (unsubsc
 		session.listeners[method] = list.New()
 	}
 	p := session.listeners[method].PushBack(cb)
-	unsubscribe = func() {
+	return func() {
 		session.rw.Lock()
 		defer session.rw.Unlock()
 		session.listeners[method].Remove(p)
 	}
-	return
 }
 
 // GetTargets ....

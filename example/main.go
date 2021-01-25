@@ -22,7 +22,7 @@ func main() {
 		panic(err)
 	}
 
-	browser.GetWSClient().SetLogLevel(cdp.LevelProtocolVerbose)
+	browser.GetWSClient().SetLogLevel(cdp.LevelProtocolFatal)
 
 	sess.SetTimeout(time.Second * 30)
 	sess.Navigate("https://mdemo.ecwid.com/")
@@ -32,6 +32,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	_, fn := sess.Listen("Runtime.consoleAPICalled")
+	defer fn()
 
 	for _, card := range all {
 		titleElement, err := card.Query(".grid-product__title-inner")

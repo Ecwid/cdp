@@ -224,8 +224,8 @@ func (session Session) Listen(methods ...string) (chan *Event, func()) {
 		case <-interrupt:
 		}
 	}
-	for _, m := range methods {
-		unsubscribe = append(unsubscribe, session.Subscribe(m, callback))
+	for n, m := range methods {
+		unsubscribe[n] = session.Subscribe(m, callback)
 	}
 	return queue, func() {
 		close(interrupt)
