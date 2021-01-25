@@ -60,10 +60,10 @@ func (c Browser) Session() (*Session, error) {
 }
 
 // NewSession ...
-func NewSession(session *Session, target string) (newsess *Session, err error) {
-	newsess = newSession(session.ws)
-	err = newsess.start(target)
-	return
+func NewSession(session *Session, target string) (*Session, error) {
+	newsess := newSession(session.ws)
+	err := newsess.start(target)
+	return newsess, err
 }
 
 // ID session's ID
@@ -91,6 +91,7 @@ func (session *Session) start(targetID string) error {
 		return err
 	}
 	session.targetID = targetID
+	session.frameID = targetID
 	session.id = result["sessionId"].(string)
 
 	go session.listener()
@@ -105,8 +106,6 @@ func (session *Session) start(targetID string) error {
 	if err = session.call("Runtime.enable", Map{"maxPostDataSize": 1024}, nil); err != nil {
 		return err
 	}
-	// context is may not be created yet
-	_ = session.setFrame(session.targetID)
 	return nil
 }
 
