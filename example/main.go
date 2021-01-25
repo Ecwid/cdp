@@ -24,7 +24,7 @@ func main() {
 
 	browser.GetWSClient().SetLogLevel(cdp.LevelProtocolVerbose)
 
-	sess.SetDeadline(time.Second * 30)
+	sess.SetTimeout(time.Second * 30)
 	sess.Navigate("https://mdemo.ecwid.com/")
 
 	sess.WaitElement(".ec-static-container .grid-product")

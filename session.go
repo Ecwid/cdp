@@ -28,7 +28,6 @@ type Session struct {
 	closed    chan struct{}
 	err       chan error
 	deadline  time.Duration
-	poll      time.Duration
 }
 
 func newSession(ws *WSClient) *Session {
@@ -263,8 +262,8 @@ func (session Session) GetID() string {
 	return session.id
 }
 
-// SetDeadline ...
-func (session *Session) SetDeadline(dl time.Duration) {
+// SetTimeout ...
+func (session *Session) SetTimeout(dl time.Duration) {
 	session.deadline = dl
 }
 
@@ -291,34 +290,29 @@ func (session Session) IsClosed() bool {
 
 // WaitElement ...
 func (session Session) WaitElement(selector string) (*Element, error) {
-	el, err := session.Ticker(func() (interface{}, error) {
-		return session.Query(selector)
+	var ret *Element
+	return ret, NewTicker(session.deadline, 500*time.Millisecond, func() (err error) {
+		ret, err = session.Query(selector)
+		return
 	})
-	return el.(*Element), err
 }
 
-// Ticker ...
-func (session Session) Ticker(call func() (interface{}, error)) (interface{}, error) {
-	var (
-		err error
-		v   interface{}
-	)
-	if v, err = call(); err == nil {
-		return v, nil
+// NewTicker ...
+func NewTicker(deadline, poll time.Duration, call func() error) (err error) {
+	if err = call(); err == nil {
+		return nil
 	}
-	var (
-		poll     = time.NewTicker(session.poll)
-		deadline = time.NewTimer(session.deadline)
-	)
-	defer poll.Stop()
-	defer deadline.Stop()
+	var ticker = time.NewTicker(poll)
+	var timeout = time.NewTimer(deadline)
+	defer ticker.Stop()
+	defer timeout.Stop()
 	for {
 		select {
-		case <-deadline.C:
-			return nil, err
-		case <-poll.C:
-			if v, err = call(); err == nil {
-				return v, nil
+		case <-timeout.C:
+			return err
+		case <-ticker.C:
+			if err = call(); err == nil {
+				return nil
 			}
 		}
 	}
