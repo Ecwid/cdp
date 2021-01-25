@@ -21,7 +21,7 @@ type Session struct {
 	id        string
 	targetID  string
 	frameID   string
-	rw        *sync.Mutex
+	subsMx    *sync.Mutex
 	frames    *sync.Map
 	listeners map[string]*list.List
 	broadcast chan *wsBroadcast
@@ -34,7 +34,7 @@ func newSession(ws *WSClient) *Session {
 	return &Session{
 		id:        "",
 		ws:        ws,
-		rw:        &sync.Mutex{},
+		subsMx:    &sync.Mutex{},
 		frames:    &sync.Map{},
 		listeners: map[string]*list.List{},
 		broadcast: make(chan *wsBroadcast, 10),
@@ -117,13 +117,13 @@ func (session Session) listener() {
 			return
 		}
 
-		session.rw.Lock()
+		session.subsMx.Lock()
 		if list, has := session.listeners[e.Method]; has {
 			for p := list.Front(); p != nil; p = p.Next() {
 				p.Value.(func(*Event))(&e.Event)
 			}
 		}
-		session.rw.Unlock()
+		session.subsMx.Unlock()
 
 		switch e.Method {
 		case "Runtime.executionContextsCleared":
@@ -221,15 +221,15 @@ func (session Session) call(method string, req interface{}, resp interface{}) er
 
 // Subscribe subscribe to CDP event
 func (session *Session) Subscribe(method string, cb func(event *Event)) (unsubscribe func()) {
-	session.rw.Lock()
-	defer session.rw.Unlock()
+	session.subsMx.Lock()
+	defer session.subsMx.Unlock()
 	if _, has := session.listeners[method]; !has {
 		session.listeners[method] = list.New()
 	}
 	p := session.listeners[method].PushBack(cb)
 	return func() {
-		session.rw.Lock()
-		defer session.rw.Unlock()
+		session.subsMx.Lock()
+		defer session.subsMx.Unlock()
 		session.listeners[method].Remove(p)
 	}
 }
@@ -272,7 +272,6 @@ func (session Session) Close() error {
 	if err != nil && err != ErrSessionClosed {
 		return err
 	}
-	session.close(nil)
 	return nil
 }
 
