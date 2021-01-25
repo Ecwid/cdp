@@ -244,6 +244,7 @@ func (w *WSClient) reader() {
 		if err != nil {
 			switch err.(type) {
 			case *websocket.CloseError:
+				w.printf(LevelProtocolErrors, err.Error())
 				close(w.disconnected)
 				// do nothing, browser was closed
 				return
