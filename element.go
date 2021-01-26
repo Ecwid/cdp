@@ -15,27 +15,13 @@ type Element struct {
 	context int64
 }
 
-func newElement(s *Session, parent *Element, ID string) (*Element, error) {
-	c, err := s.executionContext()
-	if err != nil {
-		return nil, err
-	}
-	el := &Element{
+func newElement(s *Session, parent *Element, ID string) *Element {
+	return &Element{
 		ID:      ID,
 		session: s,
-		context: c,
+		context: s.currentContext(),
 	}
-	return el, nil
 }
-
-// Detached ...
-// func (e *Element) Detached() bool {
-// 	c, err := e.session.executionContext()
-// 	if err != nil {
-// 		return true
-// 	}
-// 	return e.context != c
-// }
 
 func (e *Element) call(functionDeclaration string, arg ...interface{}) (*devtool.RemoteObject, error) {
 	return e.session.callFunctionOn(e.ID, functionDeclaration, arg...)
@@ -107,14 +93,8 @@ func (e *Element) Click() error {
 		}
 		return ErrClickFailed
 	}
-	if err == ErrSessionClosed {
+	if err == ErrSessionClosed || err == ErrStaleElementReference {
 		return nil
-	}
-	switch err1 := err.(type) {
-	case wsError:
-		if err1.Code == -32000 { // element was detached
-			return nil
-		}
 	}
 	return err
 }

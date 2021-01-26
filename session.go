@@ -17,64 +17,36 @@ type Map map[string]interface{}
 
 // Session ...
 type Session struct {
-	ws        *WSClient
-	id        string
-	targetID  string
-	frameID   string
-	subsMx    *sync.Mutex
-	frames    *sync.Map
-	listeners map[string]*list.List
-	broadcast chan *wsBroadcast
-	closed    chan struct{}
-	err       chan error
-	deadline  time.Duration
+	ws          *WSClient
+	id          string
+	loader      *loader
+	target      string
+	broadcast   chan *wsBroadcast
+	closed      chan struct{}
+	err         chan error
+	deadline    time.Duration
+	eventsMutex *sync.Mutex
+	listeners   map[string]*list.List
 }
 
 func newSession(ws *WSClient) *Session {
 	return &Session{
-		id:        "",
-		ws:        ws,
-		subsMx:    &sync.Mutex{},
-		frames:    &sync.Map{},
-		listeners: map[string]*list.List{},
-		broadcast: make(chan *wsBroadcast, 10),
-		closed:    make(chan struct{}, 1),
-		err:       make(chan error, 1),
-		deadline:  60 * time.Second,
-	}
-}
-
-// Session ...
-func (c Browser) Session() (*Session, error) {
-	var sess = newSession(c.GetWSClient())
-	var (
-		retry    = time.NewTicker(250 * time.Millisecond)
-		deadline = time.NewTimer(10 * time.Second)
-	)
-	defer retry.Stop()
-	defer deadline.Stop()
-	for {
-		select {
-		case <-deadline.C:
-			return nil, ErrNoPageTarget
-		case <-retry.C:
-			targets, err := sess.GetTargets()
-			if err != nil {
-				return nil, err
-			}
-			for _, t := range targets {
-				if t.Type == "page" {
-					return sess, sess.start(t.TargetID)
-				}
-			}
-		}
+		id:          "",
+		ws:          ws,
+		eventsMutex: &sync.Mutex{},
+		loader:      newLoader(),
+		listeners:   map[string]*list.List{},
+		broadcast:   make(chan *wsBroadcast, 10),
+		closed:      make(chan struct{}, 1),
+		err:         make(chan error, 1),
+		deadline:    60 * time.Second,
 	}
 }
 
 // NewSession ...
 func NewSession(session *Session, target string) (*Session, error) {
 	newsess := newSession(session.ws)
-	err := newsess.start(target)
+	err := newsess.attachToTarget(target)
 	return newsess, err
 }
 
@@ -83,7 +55,7 @@ func (session Session) ID() string {
 	return session.id
 }
 
-func (session Session) close(err error) {
+func (session Session) exception(err error) {
 	select {
 	case <-session.closed:
 		return
@@ -92,29 +64,28 @@ func (session Session) close(err error) {
 	}
 }
 
-func (session *Session) start(targetID string) error {
-	if err := session.call("Target.setDiscoverTargets", Map{"discover": true}, nil); err != nil {
-		return err
-	}
+func (session *Session) attachToTarget(targetID string) error {
 	var result = make(Map)
 	err := session.call("Target.attachToTarget", Map{"targetId": targetID, "flatten": true}, &result)
 	if err != nil {
 		return err
 	}
-	session.targetID = targetID
-	session.frameID = targetID
+	session.target = targetID
 	session.id = result["sessionId"].(string)
-
 	go session.listener()
+	session.newContext("")
 	session.ws.register(session.id, session.broadcast)
+	if err := session.call("Target.setDiscoverTargets", Map{"discover": true}, nil); err != nil {
+		return err
+	}
 	if err = session.call("Page.enable", nil, nil); err != nil {
 		return err
 	}
-	if err = session.call("Runtime.enable", nil, nil); err != nil {
-		return err
-	}
+	// if err = session.call("Runtime.enable", nil, nil); err != nil {
+	// 	return err
+	// }
 	// maxPostDataSize - Longest post body size (in bytes) that would be included in requestWillBeSent notification
-	if err = session.call("Runtime.enable", Map{"maxPostDataSize": 1024}, nil); err != nil {
+	if err = session.call("Network.enable", Map{"maxPostDataSize": 1024}, nil); err != nil {
 		return err
 	}
 	return nil
@@ -124,64 +95,46 @@ func (session Session) listener() {
 	for e := range session.broadcast {
 
 		if e.Error != "" {
-			session.close(errors.New(e.Error))
+			session.exception(errors.New(e.Error))
 			return
 		}
 
-		session.subsMx.Lock()
+		session.eventsMutex.Lock()
 		if list, has := session.listeners[e.Method]; has {
 			for p := list.Front(); p != nil; p = p.Next() {
 				p.Value.(func(*Event))(&e.Event)
 			}
 		}
-		session.subsMx.Unlock()
+		session.eventsMutex.Unlock()
 
 		switch e.Method {
-		case "Runtime.executionContextsCleared":
-			session.frames.Range(func(k interface{}, v interface{}) bool {
-				session.frames.Delete(k)
-				return true
-			})
 
-		case "Runtime.executionContextCreated":
-			c := new(devtool.ExecutionContextCreated)
-			if err := json.Unmarshal(e.Params, c); err != nil {
-				session.close(err)
+		case "Page.frameNavigated":
+			event := new(devtool.FrameNavigated)
+			if err := json.Unmarshal(e.Params, event); err != nil {
+				session.exception(err)
 				return
 			}
-			session.frames.Store(c.Context.AuxData["frameId"].(string), c.Context.ID)
-
-		case "Runtime.executionContextDestroyed":
-			c := new(devtool.ExecutionContextDestroyed)
-			if err := json.Unmarshal(e.Params, c); err != nil {
-				session.close(err)
-				return
+			if session.target == event.Frame.ID {
+				session.loader.lock()
 			}
-			session.frames.Range(func(k interface{}, v interface{}) bool {
-				if v.(int64) == c.ExecutionContextID {
-					session.frames.Delete(k)
-					return false
-				}
-				return true
-			})
+
+		case "Page.loadEventFired":
+			session.loader.unlock()
 
 		case "Target.targetCrashed":
-			c := new(devtool.TargetCrashed)
-			if err := json.Unmarshal(e.Params, c); err != nil {
-				session.close(err)
-				return
-			}
-			session.close(errors.New(string(e.Params)))
+			session.exception(errors.New(string(e.Params)))
+			// ws client will be disconnected
 			return
 
 		case "Target.targetDestroyed":
-			c := new(devtool.TargetDestroyed)
-			if err := json.Unmarshal(e.Params, c); err != nil {
-				session.close(err)
+			event := new(devtool.TargetDestroyed)
+			if err := json.Unmarshal(e.Params, event); err != nil {
+				session.exception(err)
 				return
 			}
-			if c.TargetID == session.targetID {
-				session.close(nil)
+			if event.TargetID == session.target {
+				close(session.closed)
 				session.ws.unregister(session.id)
 				return
 			}
@@ -198,7 +151,12 @@ func (session Session) blockingSend(method string, params interface{}) ([]byte, 
 		return nil, ErrSessionClosed
 	case response := <-recv:
 		if response.Error.Code != 0 {
-			return nil, response.Error
+			switch response.Error.Code {
+			case -32000:
+				return nil, ErrStaleElementReference
+			default:
+				return nil, response.Error
+			}
 		}
 		return response.Result, nil
 	case <-time.After(session.deadline):
@@ -232,15 +190,15 @@ func (session Session) call(method string, req interface{}, resp interface{}) er
 
 // Subscribe subscribe to CDP event
 func (session *Session) Subscribe(method string, cb func(event *Event)) (unsubscribe func()) {
-	session.subsMx.Lock()
-	defer session.subsMx.Unlock()
+	session.eventsMutex.Lock()
+	defer session.eventsMutex.Unlock()
 	if _, has := session.listeners[method]; !has {
 		session.listeners[method] = list.New()
 	}
 	p := session.listeners[method].PushBack(cb)
 	return func() {
-		session.subsMx.Lock()
-		defer session.subsMx.Unlock()
+		session.eventsMutex.Lock()
+		defer session.eventsMutex.Unlock()
 		session.listeners[method].Remove(p)
 	}
 }
@@ -252,18 +210,6 @@ func (session Session) GetTargets() ([]*devtool.TargetInfo, error) {
 		return nil, err
 	}
 	return info.TargetInfos, nil
-}
-
-func (session Session) executionContext() (int64, error) {
-	var id = session.frameID
-	if v, ok := session.frames.Load(id); ok {
-		return v.(int64), nil
-	}
-	if id == session.targetID {
-		// for main frame we can use default context with ID = 0
-		return 0, nil
-	}
-	return -1, ErrFrameDetached
 }
 
 // GetID ...
@@ -278,7 +224,7 @@ func (session *Session) SetTimeout(dl time.Duration) {
 
 // Close close this sessions
 func (session Session) Close() error {
-	err := session.call("Target.closeTarget", Map{"targetId": session.targetID}, nil)
+	err := session.call("Target.closeTarget", Map{"targetId": session.target}, nil)
 	// event 'Target.targetDestroyed' can be received early than message response
 	if err != nil && err != ErrSessionClosed {
 		return err

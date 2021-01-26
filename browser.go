@@ -3,18 +3,43 @@ package cdp
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
 )
 
+// BrowserTarget ...
+type BrowserTarget struct {
+	Description          string `json:"description"`
+	DevtoolsFrontendURL  string `json:"devtoolsFrontendUrl"`
+	ID                   string `json:"id"`
+	Title                string `json:"title"`
+	Type                 string `json:"type"`
+	URL                  string `json:"url"`
+	WebSocketDebuggerURL string `json:"webSocketDebuggerUrl"`
+}
+
+// BrowserVersion ...
+type BrowserVersion struct {
+	Browser              string `json:"Browser"`
+	ProtocolVersion      string `json:"Protocol-Version"`
+	UserAgent            string `json:"User-Agent"`
+	V8Version            string `json:"V8-Version"`
+	WebKitVersion        string `json:"WebKit-Version"`
+	WebSocketDebuggerURL string `json:"webSocketDebuggerUrl"`
+}
+
 // Browser ...
 type Browser struct {
+	url      *url.URL
 	cmd      *exec.Cmd
 	wsClient *WSClient
 	deadline time.Duration
@@ -28,6 +53,44 @@ func (c Browser) GetWSClient() *WSClient {
 // Crash ...
 func (c Browser) Crash() {
 	c.wsClient.sendOverProtocol("", "Browser.crash", nil)
+}
+
+func (c Browser) request(path string, response interface{}) error {
+	r, err := http.Get("http://" + c.url.Host + path)
+	if err != nil {
+		return err
+	}
+	return json.NewDecoder(r.Body).Decode(response)
+}
+
+// GetVersion ...
+func (c Browser) GetVersion() (BrowserVersion, error) {
+	var result = BrowserVersion{}
+	err := c.request("/json/version", &result)
+	return result, err
+}
+
+// GetTargets ...
+func (c Browser) GetTargets() ([]BrowserTarget, error) {
+	var result = []BrowserTarget{}
+	err := c.request("/json", &result)
+	return result, err
+}
+
+// Session ...
+func (c Browser) Session() (*Session, error) {
+	var id string
+	list, err := c.GetTargets()
+	if err != nil {
+		return nil, err
+	}
+	for _, v := range list {
+		if v.Type == "page" {
+			id = v.ID
+			break
+		}
+	}
+	return NewSession(&Session{ws: c.wsClient}, id)
 }
 
 // Close close browser
@@ -78,6 +141,7 @@ func Launch(ctx context.Context, userFlags ...string) (*Browser, error) {
 	}
 
 	flags := []string{
+		"about:blank", // open url
 		"--no-first-run",
 		"--no-default-browser-check",
 		"--remote-debugging-port=0",
@@ -98,10 +162,7 @@ func Launch(ctx context.Context, userFlags ...string) (*Browser, error) {
 		"--user-data-dir=" + userDataDir,
 	}
 
-	for _, f := range userFlags {
-		flags = append(flags, f)
-	}
-
+	flags = append(flags, userFlags...)
 	if os.Getuid() == 0 {
 		flags = append(flags, "--no-sandbox")
 	}
@@ -116,6 +177,10 @@ func Launch(ctx context.Context, userFlags ...string) (*Browser, error) {
 		return nil, err
 	}
 	webSocketURL, err := addrFromStderr(stderr)
+	if err != nil {
+		return nil, err
+	}
+	browser.url, err = url.Parse(webSocketURL)
 	if err != nil {
 		return nil, err
 	}

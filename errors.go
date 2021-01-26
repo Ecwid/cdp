@@ -13,15 +13,16 @@ type NoSuchElementError struct {
 }
 
 func (e NoSuchElementError) Error() string {
-	return fmt.Sprintf("no such element %s\ncontext: %d, frame %s", e.selector, e.context, e.frame)
+	return fmt.Sprintf("no such element `%s` context: %d, frame %s", e.selector, e.context, e.frame)
 }
 
 // cdp errors
 var (
+	ErrStaleElementReference = errors.New("referenced element is no longer attached to the DOM") // cannot find context with specified id
 	// ErrElementDetached        = errors.New("referenced element is no longer attached to the DOM")
-	ErrNoSuchFrame            = errors.New("no such frame")
-	ErrFrameDetached          = errors.New("frame you working on was detached")
-	ErrNoPageTarget           = errors.New("no one page target")
+	// ErrNoSuchFrame            = errors.New("no such frame")
+	// ErrFrameDetached          = errors.New("frame you working on was detached")
+	// ErrNoPageTarget           = errors.New("no one page target")
 	ErrElementInvisible       = errors.New("element invisible")
 	ErrElementIsOutOfViewport = errors.New("element is out of viewport")
 	ErrClickFailed            = errors.New("element is overlapping or change position")
@@ -31,4 +32,5 @@ var (
 	ErrSessionClosed          = errors.New("session closed")
 	ErrConnectionClosed       = errors.New("abnormal closure")
 	ErrTimeout                = errors.New("timeout")
+	// ErrContextDestroyed       = errors.New("cannot find context with specified id")
 )

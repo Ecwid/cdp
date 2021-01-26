@@ -158,18 +158,18 @@ func (net Network) Intercept(patterns []*devtool.RequestPattern, fn func(*devtoo
 	unsubscribe := net.Subscribe("Fetch.requestPaused", func(e *Event) {
 		request := new(devtool.RequestPaused)
 		if err := json.Unmarshal(e.Params, request); err != nil {
-			net.close(err)
+			net.exception(err)
 			return
 		}
 		go fn(request, &Interceptor{Network: &net})
 	})
 	if err := net.fetchEnable(patterns, false); err != nil {
-		net.close(err)
+		net.exception(err)
 	}
 	return func() {
 		unsubscribe()
 		if err := net.fetchDisable(); err != nil {
-			net.close(err)
+			net.exception(err)
 		}
 	}
 }

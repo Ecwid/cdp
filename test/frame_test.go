@@ -63,7 +63,7 @@ func TestFrameRenew(t *testing.T) {
 	check(t, sess.SwitchTo(fid))
 	time.Sleep(time.Second * 4)
 
-	if _, err := sess.Query("#frameButton1"); err != cdp.ErrFrameDetached {
+	if _, err := sess.Query("#frameButton1"); err != cdp.ErrStaleElementReference {
 		t.Fatalf("not expected error: %s", err.Error())
 	}
 }

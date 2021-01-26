@@ -8,18 +8,17 @@ import (
 
 const blankPage = "about:blank"
 
-func (session *Session) setFrame(frameID string) error {
-	if _, ok := session.frames.Load(frameID); !ok {
-		return ErrNoSuchFrame
-	}
-	session.frameID = frameID
-	return nil
-}
-
 func (page Page) getNavigationHistory() (*devtool.NavigationHistory, error) {
 	history := new(devtool.NavigationHistory)
 	err := page.call("Page.getNavigationHistory", nil, history)
 	return history, err
+}
+
+// CreateIsolatedWorld ....
+func (page Page) CreateIsolatedWorld(frameID, worldName string) (int64, error) {
+	result := Map{}
+	err := page.call("Page.createIsolatedWorld", Map{"frameId": frameID, "worldName": worldName}, &result)
+	return int64(result["executionContextId"].(float64)), err
 }
 
 func (page Page) navigateToHistoryEntry(entryID int64) error {
@@ -72,13 +71,10 @@ func (session Session) query(parent *Element, selector string) (*Element, error)
 	selector = strings.ReplaceAll(selector, `"`, `\"`)
 	var (
 		e       *devtool.RemoteObject
-		context int64
+		context = session.currentContext()
 		err     error
 	)
 	if parent == nil {
-		if context, err = session.executionContext(); err != nil {
-			return nil, err
-		}
 		e, err = session.evaluate(`document.querySelector("`+selector+`")`, context, false, false)
 	} else {
 		e, err = parent.call(`function(s){return this.querySelector(s)}`, selector)
@@ -87,22 +83,19 @@ func (session Session) query(parent *Element, selector string) (*Element, error)
 		return nil, err
 	}
 	if e.ObjectID == "" {
-		return nil, NoSuchElementError{selector: selector, context: context, frame: session.frameID}
+		return nil, NoSuchElementError{selector: selector, context: context}
 	}
-	return newElement(&session, parent, e.ObjectID)
+	return newElement(&session, parent, e.ObjectID), nil
 }
 
 func (session Session) queryAll(parent *Element, selector string) ([]*Element, error) {
 	selector = strings.ReplaceAll(selector, `"`, `\"`)
 	var (
+		context = session.currentContext()
 		array   *devtool.RemoteObject
-		context int64
 		err     error
 	)
 	if parent == nil {
-		if context, err = session.executionContext(); err != nil {
-			return nil, err
-		}
 		array, err = session.evaluate(`document.querySelectorAll("`+selector+`")`, context, false, false)
 	} else {
 		array, err = parent.call(`function(s){return this.querySelectorAll(s)}`, selector)
@@ -112,7 +105,7 @@ func (session Session) queryAll(parent *Element, selector string) ([]*Element, e
 	}
 	if array == nil || array.Description == "NodeList(0)" {
 		_ = session.releaseObject(array.ObjectID)
-		return nil, NoSuchElementError{selector: selector, context: context, frame: session.frameID}
+		return nil, NoSuchElementError{selector: selector, context: context}
 	}
 	all := make([]*Element, 0)
 	descriptor, err := session.getProperties(array.ObjectID)
@@ -123,11 +116,7 @@ func (session Session) queryAll(parent *Element, selector string) ([]*Element, e
 		if !d.Enumerable {
 			continue
 		}
-		e, err := newElement(&session, parent, d.Value.ObjectID)
-		if err != nil {
-			return nil, err
-		}
-		all = append(all, e)
+		all = append(all, newElement(&session, parent, d.Value.ObjectID))
 	}
 	return all, nil
 }

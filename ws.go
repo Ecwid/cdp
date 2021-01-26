@@ -187,7 +187,7 @@ func (w *WSClient) unregister(sessionID string) {
 }
 
 // Close ...
-func (w *WSClient) throw(err error) {
+func (w *WSClient) exception(err error) {
 	if err != nil {
 		w.printf(LevelProtocolFatal, "\033[1;31m%s\033[0m", err.Error())
 	}
@@ -204,7 +204,7 @@ func (w *WSClient) writer() {
 		case req := <-w.send:
 			w.printf(LevelProtocolMessage, "\033[1;36msend -> %s\033[0m", string(req))
 			if err := w.conn.WriteMessage(websocket.TextMessage, req); err != nil {
-				w.throw(err)
+				w.exception(err)
 			}
 		case err := <-w.err:
 			if err != nil {
@@ -244,13 +244,13 @@ func (w *WSClient) reader() {
 				// do nothing, browser was closed
 				return
 			default:
-				w.throw(err)
+				w.exception(err)
 				return
 			}
 		}
 		var response = new(wsResponse)
 		if err := json.Unmarshal(body, response); err != nil {
-			w.throw(err)
+			w.exception(err)
 			return
 		}
 		if response.isBroadcast() {

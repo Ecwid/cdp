@@ -19,14 +19,6 @@ func (d DOM) GetNode(objectID string) (*devtool.Node, error) {
 	return describeNode.Node, nil
 }
 
-func (d DOM) getFrameOwner(frameID string) (int64, error) {
-	result := Map{}
-	if err := d.call("DOM.getFrameOwner", Map{"frameId": frameID}, &result); err != nil {
-		return -1, err
-	}
-	return int64(result["backendNodeId"].(float64)), nil
-}
-
 // GetContentQuads ...
 func (d DOM) GetContentQuads(objectID string, viewportCorrection bool) (devtool.Quad, error) {
 	cq := new(devtool.ContentQuads)

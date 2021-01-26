@@ -105,6 +105,11 @@ type Frame struct {
 	UnreachableURL string `json:"unreachableUrl"`
 }
 
+// FrameNavigated ...
+type FrameNavigated struct {
+	Frame *Frame `json:"frame"`
+}
+
 // FrameTreeResult https://chromedevtools.github.io/devtools-protocol/tot/Page#method-getFrameTree
 type FrameTreeResult struct {
 	FrameTree *FrameTree `json:"frameTree"`

@@ -33,52 +33,29 @@ type Page = Session
 
 // Navigate navigate to url
 func (session Session) Navigate(urlStr string) (err error) {
-	eventFired := make(chan struct{}, 1)
-	unsubscribe := session.Subscribe("Page.loadEventFired", func(*Event) {
-		select {
-		case eventFired <- struct{}{}:
-		default:
-		}
-	})
-	defer close(eventFired)
-	defer unsubscribe()
+	session.loader.lock() // force frameNavigated event
 	nav := new(devtool.NavigationResult)
-	err = session.call("Page.navigate", Map{
+	p := Map{
 		"url":            urlStr,
 		"transitionType": "typed",
-		"frameId":        session.targetID,
-	}, nav)
-	if err != nil {
+		"frameId":        session.target,
+	}
+	if err = session.call("Page.navigate", p, nav); err != nil {
 		return err
 	}
 	if nav.ErrorText != "" {
 		return errors.New(nav.ErrorText)
 	}
 	if nav.LoaderID == "" {
-		// no navigate need
-		return nil
+		return nil // no navigate need
 	}
-	if err = session.withDeadline(eventFired); err != nil {
-		return err
-	}
-	return session.setFrame(nav.FrameID)
+	return session.newContext(nav.FrameID)
 }
 
 // Reload refresh current page ignores cache
 func (session Session) Reload() error {
-	eventFired := make(chan struct{}, 1)
-	unsubscribe := session.Subscribe("Page.loadEventFired", func(*Event) {
-		select {
-		case eventFired <- struct{}{}:
-		default:
-		}
-	})
-	defer close(eventFired)
-	defer unsubscribe()
+	session.loader.lock() // force frameNavigated event
 	if err := session.call("Page.reload", Map{"ignoreCache": true}, nil); err != nil {
-		return err
-	}
-	if err := session.withDeadline(eventFired); err != nil {
 		return err
 	}
 	return session.Main()
@@ -91,10 +68,10 @@ func (session Session) OnTargetCreated(before func()) (*Session, error) {
 	unsubscribe := session.Subscribe("Target.targetCreated", func(e *Event) {
 		targetCreated := new(devtool.TargetCreated)
 		if err := json.Unmarshal(e.Params, targetCreated); err != nil {
-			session.close(err)
+			session.exception(err)
 			return
 		}
-		if targetCreated.TargetInfo.Type == "page" && targetCreated.TargetInfo.OpenerID == session.targetID {
+		if targetCreated.TargetInfo.Type == "page" && targetCreated.TargetInfo.OpenerID == session.target {
 			result = targetCreated.TargetInfo.TargetID
 			select {
 			case eventFired <- struct{}{}:
@@ -113,17 +90,17 @@ func (session Session) OnTargetCreated(before func()) (*Session, error) {
 
 // Main switch context to main frame of page
 func (session Session) Main() error {
-	return session.setFrame(session.targetID)
+	return session.newContext(session.target)
 }
 
 // SwitchTo switch context to frame
 func (session *Session) SwitchTo(frameID string) error {
-	return session.setFrame(frameID)
+	return session.newContext(frameID)
 }
 
 // Activate activate current Target
 func (session Session) Activate() error {
-	return session.activate(session.targetID)
+	return session.activate(session.target)
 }
 
 // NewTab ...
