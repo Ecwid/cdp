@@ -6,7 +6,7 @@ import (
 )
 
 type loader struct {
-	*sync.Cond
+	cond    *sync.Cond
 	context int64
 	frame   string
 	mx      *sync.Mutex
@@ -16,44 +16,47 @@ type loader struct {
 func newLoader() *loader {
 	return &loader{
 		context: 0,
-		Cond:    sync.NewCond(&sync.Mutex{}),
+		cond:    sync.NewCond(&sync.Mutex{}),
 		mx:      &sync.Mutex{},
 	}
 }
 
-func (loader *loader) lock() {
-	loader.L.Lock()
-	loader.locked = true
-	loader.L.Unlock()
+func (l *loader) lock() {
+	l.cond.L.Lock()
+	l.locked = true
+	l.cond.L.Unlock()
 }
 
-func (loader *loader) unlock() {
-	loader.L.Lock()
-	loader.locked = false
-	loader.L.Unlock()
-	loader.Broadcast()
+func (l *loader) unlock() {
+	l.cond.L.Lock()
+	l.locked = false
+	l.cond.Broadcast()
+	l.cond.L.Unlock()
 }
 
-func condwait(cond *sync.Cond, deadline time.Duration) error {
+func condwait(cond *sync.Cond, deadline time.Duration) (err error) {
 	var c = make(chan struct{})
 	go func() {
-		cond.Wait()
+		cond.Wait() // unlock of unlocked mutex
 		close(c)
 	}()
-	select {
-	case <-c:
-		return nil
-	case <-time.After(deadline):
-		return ErrTimeout
+	for {
+		select {
+		case <-c:
+			return err
+		case <-time.After(deadline):
+			err = ErrTimeout
+			cond.Broadcast()
+		}
 	}
 }
 
-func (loader *loader) wait(deadline time.Duration) (err error) {
-	loader.L.Lock()
-	for loader.locked {
-		err = condwait(loader.Cond, deadline)
+func (l *loader) wait(deadline time.Duration) (err error) {
+	l.cond.L.Lock()
+	for l.locked {
+		err = condwait(l.cond, deadline)
 	}
-	loader.L.Unlock()
+	l.cond.L.Unlock()
 	return err
 }
 

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -92,6 +93,7 @@ func (c Browser) Session() (*Session, error) {
 			if err != nil {
 				return nil, err
 			}
+			log.Printf("%+v", targets)
 			for _, t := range targets {
 				if t.Type == "page" {
 					return NewSession(&Session{ws: c.wsClient}, t.ID)
