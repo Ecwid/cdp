@@ -56,6 +56,7 @@ func (session Session) ID() string {
 }
 
 func (session Session) exception(err error) {
+	session.ws.printf(LevelProtocolFatal, err.Error())
 	select {
 	case <-session.closed:
 		return
