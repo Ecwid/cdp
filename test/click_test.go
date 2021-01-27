@@ -39,7 +39,7 @@ func TestClickHit(t *testing.T) {
 		switch err {
 		case nil:
 			pass++
-		case cdp.ErrClickFailed:
+		case cdp.ErrMissClick:
 			miss++
 		default:
 			t.Fatal(err)

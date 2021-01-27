@@ -18,19 +18,14 @@ func (e NoSuchElementError) Error() string {
 
 // cdp errors
 var (
-	ErrStaleElementReference = errors.New("referenced element is no longer attached to the DOM") // cannot find context with specified id
-	// ErrElementDetached        = errors.New("referenced element is no longer attached to the DOM")
-	// ErrNoSuchFrame            = errors.New("no such frame")
-	// ErrFrameDetached          = errors.New("frame you working on was detached")
+	ErrStaleElementReference  = errors.New("referenced element is no longer attached to the DOM") // cannot find context with specified id
 	ErrNoPageTarget           = errors.New("no target with page type found")
 	ErrElementInvisible       = errors.New("element invisible")
 	ErrElementIsOutOfViewport = errors.New("element is out of viewport")
-	ErrClickFailed            = errors.New("element is overlapping or change position")
-	ErrInvalidString          = errors.New("object type is not string")
-	ErrInvalidElementSelect   = errors.New("specified element is not a SELECT")
-	ErrInvalidElementOption   = errors.New("specified element has no options")
-	ErrSessionClosed          = errors.New("session closed")
-	ErrConnectionClosed       = errors.New("abnormal closure")
-	ErrTimeout                = errors.New("timeout")
-	// ErrContextDestroyed       = errors.New("cannot find context with specified id")
+	ErrMissClick              = errors.New("click is not received by element")
+	ErrObjectNotString        = errors.New("object type is not string")
+	ErrSessionAlreadyClosed   = errors.New("session was already closed")
+	ErrConnectionClosed       = errors.New("websocket connection abnormal closure, browser may have died")
+	ErrTargetCreatedTimeout   = errors.New("target creation timeout was reached")
+	ErrLoadTimeout            = errors.New("load state timeout was reached")
 )

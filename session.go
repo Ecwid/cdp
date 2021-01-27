@@ -158,7 +158,7 @@ func (session Session) blockingSend(method string, params interface{}) ([]byte, 
 	case err := <-session.err:
 		return nil, err
 	case <-session.closed:
-		return nil, ErrSessionClosed
+		return nil, ErrSessionAlreadyClosed
 	case response := <-recv:
 		if response.Error.Code != 0 {
 			switch response.Error.Code {
@@ -223,10 +223,10 @@ func (session *Session) SetTimeout(dl time.Duration) {
 func (session Session) Close() error {
 	err := session.call("Target.closeTarget", Map{"targetId": session.target}, nil)
 	// event 'Target.targetDestroyed' can be received early than message response
-	if err != nil && err != ErrSessionClosed {
-		return err
+	if err == ErrSessionAlreadyClosed {
+		return nil
 	}
-	return nil
+	return err
 }
 
 // IsClosed check is session (tab) closed

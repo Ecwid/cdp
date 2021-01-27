@@ -8,7 +8,6 @@ import (
 type loader struct {
 	cond    *sync.Cond
 	context int64
-	frame   string
 	mx      *sync.Mutex
 	locked  bool
 }
@@ -45,7 +44,7 @@ func condwait(cond *sync.Cond, deadline time.Duration) (err error) {
 		case <-c:
 			return err
 		case <-time.After(deadline):
-			err = ErrTimeout
+			err = ErrLoadTimeout
 			cond.Broadcast()
 		}
 	}

@@ -87,9 +87,9 @@ func (session Session) OnTargetCreated(before func()) (*Session, error) {
 	case err := <-session.err:
 		return nil, err
 	case <-session.closed:
-		return nil, ErrSessionClosed
+		return nil, ErrSessionAlreadyClosed
 	case <-time.After(session.deadline):
-		return nil, ErrTimeout
+		return nil, ErrTargetCreatedTimeout
 	}
 }
 

@@ -2,6 +2,7 @@ package cdp
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/ecwid/cdp/internal/atom"
@@ -91,9 +92,9 @@ func (e *Element) Click() error {
 		if ok.Bool() {
 			return nil
 		}
-		return ErrClickFailed
+		return ErrMissClick
 	}
-	if err == ErrSessionClosed || err == ErrStaleElementReference {
+	if err == ErrSessionAlreadyClosed || err == ErrStaleElementReference {
 		return nil
 	}
 	return err
@@ -183,7 +184,7 @@ func (e *Element) string(functionDeclaration string, arg ...interface{}) (string
 		return "", err
 	}
 	if res.Type != "string" {
-		return "", ErrInvalidString
+		return "", ErrObjectNotString
 	}
 	return res.Value.(string), nil
 }
@@ -259,7 +260,7 @@ func (e *Element) ObserveMutation(attributes, childList, subtree bool) (chan str
 			return
 		}
 		if val.Type != "string" {
-			chanerr <- ErrInvalidString
+			chanerr <- ErrObjectNotString
 		}
 		mutation <- val.Value.(string)
 	}()
@@ -273,14 +274,14 @@ func (e *Element) Select(values ...string) error {
 		return err
 	}
 	if "SELECT" != node.NodeName {
-		return ErrInvalidElementSelect
+		return errors.New("specified element is not a SELECT")
 	}
 	has, err := e.call(atom.SelectHasOptions, values)
 	if err != nil {
 		return err
 	}
 	if !has.Bool() {
-		return ErrInvalidElementOption
+		return fmt.Errorf("select element has no options %s", values)
 	}
 	if err = e.scrollIntoView(); err != nil {
 		return err
