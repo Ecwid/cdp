@@ -79,18 +79,26 @@ func (c Browser) GetTargets() ([]BrowserTarget, error) {
 
 // Session ...
 func (c Browser) Session() (*Session, error) {
-	var id string
-	list, err := c.GetTargets()
-	if err != nil {
-		return nil, err
-	}
-	for _, v := range list {
-		if v.Type == "page" {
-			id = v.ID
-			break
+	tick := time.NewTicker(250 * time.Millisecond)
+	timeout := time.NewTimer(c.deadline)
+	defer tick.Stop()
+	defer timeout.Stop()
+	for {
+		select {
+		case <-timeout.C:
+			return nil, ErrNoPageTarget
+		case <-tick.C:
+			targets, err := c.GetTargets()
+			if err != nil {
+				return nil, err
+			}
+			for _, t := range targets {
+				if t.Type == "page" {
+					return NewSession(&Session{ws: c.wsClient}, t.ID)
+				}
+			}
 		}
 	}
-	return NewSession(&Session{ws: c.wsClient}, id)
 }
 
 // Close close browser

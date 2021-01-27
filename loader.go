@@ -57,15 +57,15 @@ func (loader *loader) wait(deadline time.Duration) (err error) {
 	return err
 }
 
-func (session *Session) newContext(id string) (err error) {
+func (session *Session) newContext(frameID string) (err error) {
 	if err = session.loader.wait(session.deadline); err != nil {
 		return err
 	}
 	session.loader.mx.Lock()
 	defer session.loader.mx.Unlock()
 	var c int64
-	if id != session.target && id != "" {
-		c, err = session.CreateIsolatedWorld(id, "my-current-frame-context")
+	if frameID != session.target && frameID != "" {
+		c, err = session.CreateIsolatedWorld(frameID, "my-current-frame-context")
 		if err != nil {
 			return err
 		}

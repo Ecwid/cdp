@@ -32,3 +32,8 @@ type TargetCrashed struct {
 type TargetDestroyed struct {
 	TargetID string `json:"targetId"`
 }
+
+// DetachedFromTarget https://chromedevtools.github.io/devtools-protocol/tot/Target/#event-detachedFromTarget
+type DetachedFromTarget struct {
+	SessionID string `json:"sessionId"`
+}

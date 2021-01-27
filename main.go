@@ -6,6 +6,7 @@ import (
 	"errors"
 	"math"
 	"sync"
+	"time"
 
 	"github.com/ecwid/cdp/pkg/devtool"
 )
@@ -63,8 +64,7 @@ func (session Session) Reload() error {
 
 // OnTargetCreated subscribe to Target.targetCreated event and return channel with targetID
 func (session Session) OnTargetCreated(before func()) (*Session, error) {
-	var eventFired = make(chan struct{}, 1)
-	var result string
+	var eventFired = make(chan string, 1)
 	unsubscribe := session.Subscribe("Target.targetCreated", func(e *Event) {
 		targetCreated := new(devtool.TargetCreated)
 		if err := json.Unmarshal(e.Params, targetCreated); err != nil {
@@ -72,9 +72,8 @@ func (session Session) OnTargetCreated(before func()) (*Session, error) {
 			return
 		}
 		if targetCreated.TargetInfo.Type == "page" && targetCreated.TargetInfo.OpenerID == session.target {
-			result = targetCreated.TargetInfo.TargetID
 			select {
-			case eventFired <- struct{}{}:
+			case eventFired <- targetCreated.TargetInfo.TargetID:
 			default:
 			}
 		}
@@ -82,10 +81,16 @@ func (session Session) OnTargetCreated(before func()) (*Session, error) {
 	defer close(eventFired)
 	defer unsubscribe()
 	before()
-	if err := session.withDeadline(eventFired); err != nil {
+	select {
+	case id := <-eventFired:
+		return NewSession(&session, id)
+	case err := <-session.err:
 		return nil, err
+	case <-session.closed:
+		return nil, ErrSessionClosed
+	case <-time.After(session.deadline):
+		return nil, ErrTimeout
 	}
-	return NewSession(&session, result)
 }
 
 // Main switch context to main frame of page

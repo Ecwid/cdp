@@ -52,7 +52,7 @@ func NewSession(session *Session, target string) (*Session, error) {
 
 // ID session's ID
 func (session Session) ID() string {
-	return session.id
+	return session.target
 }
 
 func (session Session) exception(err error) {
@@ -81,9 +81,6 @@ func (session *Session) attachToTarget(targetID string) error {
 	if err = session.call("Page.enable", nil, nil); err != nil {
 		return err
 	}
-	// if err = session.call("Runtime.enable", nil, nil); err != nil {
-	// 	return err
-	// }
 	// maxPostDataSize - Longest post body size (in bytes) that would be included in requestWillBeSent notification
 	if err = session.call("Network.enable", Map{"maxPostDataSize": 1024}, nil); err != nil {
 		return err
@@ -92,6 +89,11 @@ func (session *Session) attachToTarget(targetID string) error {
 }
 
 func (session Session) listener() {
+	defer func() {
+		close(session.closed)
+		session.ws.unregister(session.id)
+	}()
+	// it's blocking routine to save order of messages
 	for e := range session.broadcast {
 
 		if e.Error != "" {
@@ -134,8 +136,16 @@ func (session Session) listener() {
 				return
 			}
 			if event.TargetID == session.target {
-				close(session.closed)
-				session.ws.unregister(session.id)
+				return
+			}
+
+		case "Target.detachedFromTarget":
+			event := new(devtool.DetachedFromTarget)
+			if err := json.Unmarshal(e.Params, event); err != nil {
+				session.exception(err)
+				return
+			}
+			if event.SessionID == session.id {
 				return
 			}
 		}
@@ -161,19 +171,6 @@ func (session Session) blockingSend(method string, params interface{}) ([]byte, 
 		return response.Result, nil
 	case <-time.After(session.deadline):
 		return nil, fmt.Errorf("websocket response timeout was reached %s for %s(%+v)", session.deadline.String(), method, params)
-	}
-}
-
-func (session Session) withDeadline(c chan struct{}) error {
-	select {
-	case <-c:
-		return nil
-	case err := <-session.err:
-		return err
-	case <-session.closed:
-		return ErrSessionClosed
-	case <-time.After(session.deadline):
-		return ErrTimeout
 	}
 }
 
@@ -235,6 +232,8 @@ func (session Session) Close() error {
 // IsClosed check is session (tab) closed
 func (session Session) IsClosed() bool {
 	select {
+	case <-session.ws.disconnected:
+		return true
 	case <-session.closed:
 		return true
 	default:

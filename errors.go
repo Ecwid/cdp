@@ -22,7 +22,7 @@ var (
 	// ErrElementDetached        = errors.New("referenced element is no longer attached to the DOM")
 	// ErrNoSuchFrame            = errors.New("no such frame")
 	// ErrFrameDetached          = errors.New("frame you working on was detached")
-	// ErrNoPageTarget           = errors.New("no one page target")
+	ErrNoPageTarget           = errors.New("no target with page type found")
 	ErrElementInvisible       = errors.New("element invisible")
 	ErrElementIsOutOfViewport = errors.New("element is out of viewport")
 	ErrClickFailed            = errors.New("element is overlapping or change position")
