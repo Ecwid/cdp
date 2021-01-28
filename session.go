@@ -19,7 +19,7 @@ type Map map[string]interface{}
 type Session struct {
 	ws          *WSClient
 	id          string
-	loader      *loader
+	state       *state
 	target      string
 	broadcast   chan *wsBroadcast
 	closed      chan struct{}
@@ -34,7 +34,7 @@ func newSession(ws *WSClient) *Session {
 		id:          "",
 		ws:          ws,
 		eventsMutex: &sync.Mutex{},
-		loader:      newLoader(),
+		state:       newState(),
 		listeners:   map[string]*list.List{},
 		broadcast:   make(chan *wsBroadcast, 10),
 		closed:      make(chan struct{}, 1),
@@ -120,11 +120,11 @@ func (session Session) listener() {
 				return
 			}
 			if session.target == event.Frame.ID {
-				session.loader.lock()
+				session.state.lock()
 			}
 
 		case "Page.loadEventFired":
-			session.loader.unlock()
+			session.state.unlock()
 
 		case "Target.targetCrashed":
 			session.exception(errors.New(string(e.Params)))

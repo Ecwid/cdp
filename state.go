@@ -5,28 +5,28 @@ import (
 	"time"
 )
 
-type loader struct {
+type state struct {
 	cond    *sync.Cond
-	context int64
-	mx      *sync.Mutex
 	locked  bool
+	mx      *sync.Mutex
+	context int64
 }
 
-func newLoader() *loader {
-	return &loader{
+func newState() *state {
+	return &state{
 		context: 0,
 		cond:    sync.NewCond(&sync.Mutex{}),
 		mx:      &sync.Mutex{},
 	}
 }
 
-func (l *loader) lock() {
+func (l *state) lock() {
 	l.cond.L.Lock()
 	l.locked = true
 	l.cond.L.Unlock()
 }
 
-func (l *loader) unlock() {
+func (l *state) unlock() {
 	l.cond.L.Lock()
 	l.locked = false
 	l.cond.Broadcast()
@@ -50,7 +50,7 @@ func condwait(cond *sync.Cond, deadline time.Duration) (err error) {
 	}
 }
 
-func (l *loader) wait(deadline time.Duration) (err error) {
+func (l *state) wait(deadline time.Duration) (err error) {
 	l.cond.L.Lock()
 	for l.locked {
 		err = condwait(l.cond, deadline)
@@ -60,11 +60,11 @@ func (l *loader) wait(deadline time.Duration) (err error) {
 }
 
 func (session *Session) newContext(frameID string) (err error) {
-	if err = session.loader.wait(session.deadline); err != nil {
+	if err = session.state.wait(session.deadline); err != nil {
 		return err
 	}
-	session.loader.mx.Lock()
-	defer session.loader.mx.Unlock()
+	session.state.mx.Lock()
+	defer session.state.mx.Unlock()
 	var c int64
 	if frameID != session.target && frameID != "" {
 		c, err = session.CreateIsolatedWorld(frameID, "my-current-frame-context")
@@ -72,12 +72,12 @@ func (session *Session) newContext(frameID string) (err error) {
 			return err
 		}
 	}
-	session.loader.context = c
+	session.state.context = c
 	return nil
 }
 
 func (session *Session) currentContext() int64 {
-	session.loader.mx.Lock()
-	defer session.loader.mx.Unlock()
-	return session.loader.context
+	session.state.mx.Lock()
+	defer session.state.mx.Unlock()
+	return session.state.context
 }

@@ -68,6 +68,9 @@ func (page Page) SetDownloadBehavior(behavior devtool.DownloadBehavior, download
 }
 
 func (session Session) query(parent *Element, selector string) (*Element, error) {
+	if err := session.state.wait(session.deadline); err != nil {
+		return nil, err
+	}
 	selector = strings.ReplaceAll(selector, `"`, `\"`)
 	var (
 		e       *devtool.RemoteObject
@@ -89,6 +92,9 @@ func (session Session) query(parent *Element, selector string) (*Element, error)
 }
 
 func (session Session) queryAll(parent *Element, selector string) ([]*Element, error) {
+	if err := session.state.wait(session.deadline); err != nil {
+		return nil, err
+	}
 	selector = strings.ReplaceAll(selector, `"`, `\"`)
 	var (
 		context = session.currentContext()

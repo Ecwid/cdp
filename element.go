@@ -194,7 +194,7 @@ func (e *Element) SetAttr(attr string, value string) (err error) {
 
 // GetAttr ...
 func (e *Element) GetAttr(attr string) (string, error) {
-	v, err := e.call(atom.GetAttr)
+	v, err := e.call(atom.GetAttr, attr)
 	if err != nil {
 		return "", err
 	}
@@ -218,7 +218,7 @@ func (e *Element) GetRectangle() (*devtool.Rect, error) {
 
 // GetComputedStyle ...
 func (e *Element) GetComputedStyle(style string) (string, error) {
-	v, err := e.call(atom.GetComputedStyle)
+	v, err := e.call(atom.GetComputedStyle, style)
 	if err != nil {
 		return "", err
 	}

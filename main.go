@@ -34,7 +34,7 @@ type Page = Session
 
 // Navigate navigate to url
 func (session Session) Navigate(urlStr string) (err error) {
-	session.loader.lock() // force frameNavigated event
+	session.state.lock() // force frameNavigated event
 	nav := new(devtool.NavigationResult)
 	p := Map{
 		"url":            urlStr,
@@ -55,7 +55,7 @@ func (session Session) Navigate(urlStr string) (err error) {
 
 // Reload refresh current page ignores cache
 func (session Session) Reload() error {
-	session.loader.lock() // force frameNavigated event
+	session.state.lock() // force frameNavigated event
 	if err := session.call("Page.reload", Map{"ignoreCache": true}, nil); err != nil {
 		return err
 	}
@@ -117,8 +117,7 @@ func (session Session) NewTab(url string) (*Session, error) {
 	if err := session.call("Target.createTarget", Map{"url": url}, &result); err != nil {
 		return nil, err
 	}
-	id := result["targetId"].(string)
-	return NewSession(&session, id)
+	return NewSession(&session, result["targetId"].(string))
 }
 
 // Query query element on page by css selector
