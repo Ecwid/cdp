@@ -113,16 +113,14 @@ func (e *Element) GetFrameID() (string, error) {
 
 // IsVisible is element visible (element has area that clickable in viewport)
 func (e *Element) IsVisible() (bool, error) {
-	if _, _, err := e.clickablePoint(); err != nil {
-		if err == ErrElementInvisible {
-			return false, nil
-		}
+	// if _, err := e.session.GetContentQuads(e.ID, true); err != nil {
+	// 	return false, err
+	// }
+	val, err := e.call(atom.IsVisible)
+	if err != nil {
 		return false, err
 	}
-	if vis, err := e.call(atom.IsVisible); err != nil || !vis.Bool() {
-		return false, nil
-	}
-	return true, nil
+	return val.Bool(), nil
 }
 
 // Hover hover mouse on element
@@ -149,29 +147,24 @@ func (e *Element) clear() error {
 
 // Type ...
 func (e *Element) Type(text string, key ...rune) error {
-	var err error
-	if enable, err := e.call(atom.IsVisible); err != nil || !enable.Bool() {
+	v, err := e.IsVisible()
+	if err != nil {
 		return err
+	}
+	if !v {
+		return ErrElementInvisible
 	}
 	if err = e.clear(); err != nil {
 		return err
 	}
-	// time.Sleep(time.Millisecond * 250)
-	// if err := e.dispatchEvents("keydown"); err != nil {
-	// 	return err
-	// }
 	// insert text, not typing
-	// todo natural typing
-	err = e.session.InsertText(text)
-	if err != nil {
+	if err = e.session.InsertText(text); err != nil {
 		return err
 	}
 	if err := e.dispatchEvents("keypress", "input", "keyup", "change"); err != nil {
 		return err
 	}
-	// send keyboard key after some pause
 	if key != nil {
-		// time.Sleep(time.Millisecond * 250)
 		return e.session.SendKeys(key...)
 	}
 	return nil
@@ -277,11 +270,11 @@ func (e *Element) Select(values ...string) error {
 	if "SELECT" != node.NodeName {
 		return errors.New("specified element is not a SELECT")
 	}
-	has, err := e.call(atom.SelectHasOptions, values)
+	contains, err := e.call(atom.SelectContains, values)
 	if err != nil {
 		return err
 	}
-	if !has.Bool() {
+	if !contains.Bool() {
 		return fmt.Errorf("select element has no options %s", values)
 	}
 	if err = e.scrollIntoView(); err != nil {
@@ -290,8 +283,7 @@ func (e *Element) Select(values ...string) error {
 	if _, err = e.call(atom.Select, values); err != nil {
 		return err
 	}
-	// time.Sleep(time.Millisecond * 250)
-	if err := e.dispatchEvents("input", "change"); err != nil {
+	if err := e.dispatchEvents("click", "input", "change"); err != nil {
 		return err
 	}
 	return nil
@@ -302,7 +294,6 @@ func (e *Element) Checkbox(check bool) error {
 	if _, err := e.call(atom.CheckBox, check); err != nil {
 		return err
 	}
-	// time.Sleep(time.Millisecond * 250)
 	if err := e.dispatchEvents("click", "input", "change"); err != nil {
 		return err
 	}

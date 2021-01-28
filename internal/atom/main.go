@@ -9,7 +9,7 @@ const (
 	Select           = `function(a){const b=Array.from(this.options);this.value=void 0;for(const c of b)if(c.selected=a.includes(c.value),c.selected&&!this.multiple)break}`
 	GetSelected      = `function(){return Array.from(this.options).filter(a=>a.selected).map(a=>a.value)}`
 	GetSelectedText  = `function(){return Array.from(this.options).filter(a=>a.selected).map(a=>a.innerText)}`
-	SelectHasOptions = `function(c){const a=Array.from(this.options);return c.length==a.filter(a=>c.includes(a.value)).length}`
+	SelectContains   = `function(c){const a=Array.from(this.options);return c.length==a.filter(a=>c.includes(a.value)).length}`
 	CheckBox         = `function(c){this.checked=c}`
 	Checked          = `function(){return this.checked}`
 	GetComputedStyle = `function(s){return getComputedStyle(this)[s]}`
