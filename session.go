@@ -73,9 +73,11 @@ func (session *Session) attachToTarget(targetID string) error {
 	}
 	session.target = targetID
 	session.id = result["sessionId"].(string)
-	go session.listener()
-	session.newContext("")
 	session.ws.register(session.id, session.broadcast)
+	go session.listener()
+
+	session.newContext("")
+
 	if err := session.call("Target.setDiscoverTargets", Map{"discover": true}, nil); err != nil {
 		return err
 	}
@@ -94,7 +96,6 @@ func (session Session) listener() {
 		close(session.closed)
 		session.ws.unregister(session.id)
 	}()
-	// it's blocking routine to save order of messages
 	for e := range session.broadcast {
 
 		if e.Error != "" {

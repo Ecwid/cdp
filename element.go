@@ -3,7 +3,6 @@ package cdp
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/ecwid/cdp/internal/atom"
 	"github.com/ecwid/cdp/pkg/devtool"
@@ -139,7 +138,7 @@ func (e *Element) Hover() error {
 }
 
 // Clear ...
-func (e *Element) Clear() error {
+func (e *Element) clear() error {
 	var err error
 	if err = e.Focus(); err != nil {
 		return err
@@ -154,13 +153,13 @@ func (e *Element) Type(text string, key ...rune) error {
 	if enable, err := e.call(atom.IsVisible); err != nil || !enable.Bool() {
 		return err
 	}
-	if err = e.Clear(); err != nil {
+	if err = e.clear(); err != nil {
 		return err
 	}
-	time.Sleep(time.Millisecond * 250)
-	if err := e.dispatchEvents("keydown"); err != nil {
-		return err
-	}
+	// time.Sleep(time.Millisecond * 250)
+	// if err := e.dispatchEvents("keydown"); err != nil {
+	// 	return err
+	// }
 	// insert text, not typing
 	// todo natural typing
 	err = e.session.InsertText(text)
@@ -172,26 +171,19 @@ func (e *Element) Type(text string, key ...rune) error {
 	}
 	// send keyboard key after some pause
 	if key != nil {
-		time.Sleep(time.Millisecond * 250)
+		// time.Sleep(time.Millisecond * 250)
 		return e.session.SendKeys(key...)
 	}
 	return nil
 }
 
-func (e *Element) string(functionDeclaration string, arg ...interface{}) (string, error) {
-	res, err := e.call(functionDeclaration, arg...)
+// GetText ...
+func (e *Element) GetText() (string, error) {
+	v, err := e.call(atom.GetInnerText)
 	if err != nil {
 		return "", err
 	}
-	if res.Type != "string" {
-		return "", ErrObjectNotString
-	}
-	return res.Value.(string), nil
-}
-
-// GetText ...
-func (e *Element) GetText() (string, error) {
-	return e.string(atom.GetInnerText)
+	return v.String()
 }
 
 // SetAttr ...
@@ -202,7 +194,11 @@ func (e *Element) SetAttr(attr string, value string) (err error) {
 
 // GetAttr ...
 func (e *Element) GetAttr(attr string) (string, error) {
-	return e.string(atom.GetAttr, attr)
+	v, err := e.call(atom.GetAttr)
+	if err != nil {
+		return "", err
+	}
+	return v.String()
 }
 
 // GetRectangle ...
@@ -222,7 +218,11 @@ func (e *Element) GetRectangle() (*devtool.Rect, error) {
 
 // GetComputedStyle ...
 func (e *Element) GetComputedStyle(style string) (string, error) {
-	return e.string(atom.GetComputedStyle, style)
+	v, err := e.call(atom.GetComputedStyle)
+	if err != nil {
+		return "", err
+	}
+	return v.String()
 }
 
 // GetSelected ...
@@ -259,10 +259,11 @@ func (e *Element) ObserveMutation(attributes, childList, subtree bool) (chan str
 			chanerr <- err
 			return
 		}
-		if val.Type != "string" {
-			chanerr <- ErrObjectNotString
+		str, err := val.String()
+		if err != nil {
+			chanerr <- err
 		}
-		mutation <- val.Value.(string)
+		mutation <- str
 	}()
 	return mutation, chanerr
 }
@@ -289,7 +290,7 @@ func (e *Element) Select(values ...string) error {
 	if _, err = e.call(atom.Select, values); err != nil {
 		return err
 	}
-	time.Sleep(time.Millisecond * 250)
+	// time.Sleep(time.Millisecond * 250)
 	if err := e.dispatchEvents("input", "change"); err != nil {
 		return err
 	}
@@ -301,8 +302,8 @@ func (e *Element) Checkbox(check bool) error {
 	if _, err := e.call(atom.CheckBox, check); err != nil {
 		return err
 	}
-	time.Sleep(time.Millisecond * 250)
-	if err := e.dispatchEvents("click", "change"); err != nil {
+	// time.Sleep(time.Millisecond * 250)
+	if err := e.dispatchEvents("click", "input", "change"); err != nil {
 		return err
 	}
 	return nil

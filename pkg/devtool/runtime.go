@@ -1,6 +1,9 @@
 package devtool
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 // ExecutionContextDescription https://chromedevtools.github.io/devtools-protocol/tot/Runtime#type-ExecutionContextDescription
 type ExecutionContextDescription struct {
@@ -131,4 +134,11 @@ type ConsoleAPICalled struct {
 // Bool RemoteObject as bool value
 func (r *RemoteObject) Bool() bool {
 	return r.Type == "boolean" && r.Value.(bool)
+}
+
+func (r *RemoteObject) String() (string, error) {
+	if r.Type == "string" {
+		return r.Value.(string), nil
+	}
+	return "", errors.New("type of RemoteObject is not string")
 }
