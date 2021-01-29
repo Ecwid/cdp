@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	c, cancel := context.WithTimeout(context.TODO(), time.Second*30)
+	c, cancel := context.WithTimeout(context.TODO(), time.Minute*30)
 	defer cancel()
 	browser, err := cdp.Launch(c)
 	if err != nil {
@@ -28,14 +28,15 @@ func main() {
 
 	sess.SetTimeout(time.Second * 30)
 	sess.Navigate("https://mdemo.ecwid.com/")
+	sess.Navigate("https://mdemo.ecwid.com/#!/~/abc")
 
 	all, err := sess.QueryAll(".ec-static-container .grid-product")
 	if err != nil {
 		panic(err)
 	}
 
-	// _, fn := sess.Listen("Runtime.consoleAPICalled")
-	// defer fn()
+	// // _, fn := sess.Listen("Runtime.consoleAPICalled")
+	// // defer fn()
 
 	for _, card := range all {
 		titleElement, err := card.Query(".grid-product__title-inner")

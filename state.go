@@ -50,13 +50,15 @@ func condwait(cond *sync.Cond, deadline time.Duration) (err error) {
 	}
 }
 
-func (l *state) wait(deadline time.Duration) (err error) {
+func (l *state) wait(deadline time.Duration) error {
 	l.cond.L.Lock()
+	defer l.cond.L.Unlock()
 	for l.locked {
-		err = condwait(l.cond, deadline)
+		if err := condwait(l.cond, deadline); err != nil {
+			return err
+		}
 	}
-	l.cond.L.Unlock()
-	return err
+	return nil
 }
 
 func (session *Session) newContext(frameID string) (err error) {

@@ -113,9 +113,9 @@ func (e *Element) GetFrameID() (string, error) {
 
 // IsVisible is element visible (element has area that clickable in viewport)
 func (e *Element) IsVisible() (bool, error) {
-	// if _, err := e.session.GetContentQuads(e.ID, true); err != nil {
-	// 	return false, err
-	// }
+	if _, err := e.session.GetContentQuads(e.ID, false); err != nil {
+		return false, err
+	}
 	val, err := e.call(atom.IsVisible)
 	if err != nil {
 		return false, err
@@ -135,18 +135,11 @@ func (e *Element) Hover() error {
 	return e.session.MouseMove(x, y)
 }
 
-// Clear ...
-func (e *Element) clear() error {
-	var err error
-	if err = e.Focus(); err != nil {
-		return err
-	}
-	_, err = e.call(atom.ClearInput)
-	return err
-}
-
 // Type ...
 func (e *Element) Type(text string, key ...rune) error {
+	if err := e.scrollIntoView(); err != nil {
+		return err
+	}
 	v, err := e.IsVisible()
 	if err != nil {
 		return err
@@ -154,7 +147,10 @@ func (e *Element) Type(text string, key ...rune) error {
 	if !v {
 		return ErrElementInvisible
 	}
-	if err = e.clear(); err != nil {
+	if _, err = e.call(atom.ClearInput); err != nil {
+		return err
+	}
+	if err = e.Focus(); err != nil {
 		return err
 	}
 	// insert text, not typing
@@ -276,9 +272,6 @@ func (e *Element) Select(values ...string) error {
 	}
 	if !contains.Bool() {
 		return fmt.Errorf("select element has no options %s", values)
-	}
-	if err = e.scrollIntoView(); err != nil {
-		return err
 	}
 	if _, err = e.call(atom.Select, values); err != nil {
 		return err

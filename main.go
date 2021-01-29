@@ -34,7 +34,6 @@ type Page = Session
 
 // Navigate navigate to url
 func (session Session) Navigate(urlStr string) (err error) {
-	session.state.lock() // force frameNavigated event
 	nav := new(devtool.NavigationResult)
 	p := Map{
 		"url":            urlStr,
@@ -50,6 +49,7 @@ func (session Session) Navigate(urlStr string) (err error) {
 	if nav.LoaderID == "" {
 		return nil // no navigate need
 	}
+	session.state.lock() // force frameNavigated event
 	return session.newContext(nav.FrameID)
 }
 
