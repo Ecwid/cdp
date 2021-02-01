@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ecwid/cdp/internal/atom"
 	"github.com/ecwid/cdp/pkg/devtool"
 )
 
@@ -37,7 +36,7 @@ func (e *Element) Call(functionDeclaration string, arg ...interface{}) (interfac
 }
 
 func (e *Element) dispatchEvents(events ...string) error {
-	_, err := e.call(atom.DispatchEvents, append([]string{}, events...))
+	_, err := e.call(atomDispatchEvents, append([]string{}, events...))
 	return err
 }
 
@@ -69,7 +68,7 @@ func (e *Element) Click() error {
 	if err != nil {
 		return err
 	}
-	if _, err = e.call(atom.PreventMissClick); err != nil {
+	if _, err = e.call(atomPreventMissClick); err != nil {
 		return err
 	}
 	if err = e.session.dispatchMouseEvent(x, y, dispatchMouseEventMoved, "none"); err != nil {
@@ -81,7 +80,7 @@ func (e *Element) Click() error {
 	if err = e.session.dispatchMouseEvent(x, y, dispatchMouseEventReleased, "left"); err != nil {
 		return err
 	}
-	ok, err := e.call(atom.ClickDone)
+	ok, err := e.call(atomClickDone)
 	if err == nil {
 		if ok.Bool() {
 			return nil
@@ -111,7 +110,7 @@ func (e *Element) IsVisible() (bool, error) {
 	if _, err := e.session.GetContentQuads(e.ID, false); err != nil {
 		return false, err
 	}
-	val, err := e.call(atom.IsVisible)
+	val, err := e.call(atomIsVisible)
 	if err != nil {
 		return false, err
 	}
@@ -142,7 +141,7 @@ func (e *Element) Type(text string, key ...rune) error {
 	if !v {
 		return ErrElementInvisible
 	}
-	if _, err = e.call(atom.ClearInput); err != nil {
+	if _, err = e.call(atomClearInput); err != nil {
 		return err
 	}
 	if err = e.Focus(); err != nil {
@@ -163,7 +162,7 @@ func (e *Element) Type(text string, key ...rune) error {
 
 // GetText ...
 func (e *Element) GetText() (string, error) {
-	v, err := e.call(atom.GetInnerText)
+	v, err := e.call(atomGetInnerText)
 	if err != nil {
 		return "", err
 	}
@@ -172,13 +171,13 @@ func (e *Element) GetText() (string, error) {
 
 // SetAttr ...
 func (e *Element) SetAttr(attr string, value string) (err error) {
-	_, err = e.call(atom.SetAttr, attr, value)
+	_, err = e.call(atomSetAttr, attr, value)
 	return
 }
 
 // GetAttr ...
 func (e *Element) GetAttr(attr string) (string, error) {
-	v, err := e.call(atom.GetAttr, attr)
+	v, err := e.call(atomGetAttr, attr)
 	if err != nil {
 		return "", err
 	}
@@ -202,7 +201,7 @@ func (e *Element) GetRectangle() (*devtool.Rect, error) {
 
 // GetComputedStyle ...
 func (e *Element) GetComputedStyle(style string) (string, error) {
-	v, err := e.call(atom.GetComputedStyle, style)
+	v, err := e.call(atomGetComputedStyle, style)
 	if err != nil {
 		return "", err
 	}
@@ -211,9 +210,9 @@ func (e *Element) GetComputedStyle(style string) (string, error) {
 
 // GetSelected ...
 func (e *Element) GetSelected(selectedText bool) ([]string, error) {
-	a := atom.GetSelected
+	a := atomGetSelected
 	if selectedText {
-		a = atom.GetSelectedText
+		a = atomGetSelectedText
 	}
 	ro, err := e.call(a)
 	if err != nil {
@@ -238,7 +237,7 @@ func (e *Element) ObserveMutation(attributes, childList, subtree bool) (chan str
 	chanerr := make(chan error, 1)
 	mutation := make(chan string, 1)
 	go func() {
-		val, err := e.call(atom.MutationObserver, attributes, childList, subtree)
+		val, err := e.call(atomMutationObserver, attributes, childList, subtree)
 		if err != nil {
 			chanerr <- err
 			return
@@ -261,14 +260,14 @@ func (e *Element) Select(values ...string) error {
 	if "SELECT" != node.NodeName {
 		return errors.New("specified element is not a SELECT")
 	}
-	contains, err := e.call(atom.SelectContains, values)
+	contains, err := e.call(atomSelectContains, values)
 	if err != nil {
 		return err
 	}
 	if !contains.Bool() {
 		return fmt.Errorf("select element has no options %s", values)
 	}
-	if _, err = e.call(atom.Select, values); err != nil {
+	if _, err = e.call(atomSelect, values); err != nil {
 		return err
 	}
 	if err := e.dispatchEvents("click", "input", "change"); err != nil {
@@ -279,7 +278,7 @@ func (e *Element) Select(values ...string) error {
 
 // Checkbox Checkbox
 func (e *Element) Checkbox(check bool) error {
-	if _, err := e.call(atom.CheckBox, check); err != nil {
+	if _, err := e.call(atomCheckBox, check); err != nil {
 		return err
 	}
 	if err := e.dispatchEvents("click", "input", "change"); err != nil {
@@ -290,7 +289,7 @@ func (e *Element) Checkbox(check bool) error {
 
 // Checked ...
 func (e *Element) Checked() (bool, error) {
-	checked, err := e.call(atom.Checked)
+	checked, err := e.call(atomChecked)
 	return checked.Bool(), err
 }
 
