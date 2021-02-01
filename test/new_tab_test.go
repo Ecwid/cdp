@@ -47,7 +47,7 @@ func TestNew5TabOpen(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(tabs) != 5+1+4 {
-		t.Fatalf("not 10 tabs but %d", len(tabs))
+	if len(tabs) != 5+1 {
+		t.Fatalf("not 6 tabs but %d", len(tabs))
 	}
 }

@@ -93,6 +93,7 @@ func (session *Session) attachToTarget(targetID string) error {
 
 func (session Session) listener() {
 	defer func() {
+		session.state.unlock()
 		close(session.closed)
 		session.ws.unregister(session.id)
 	}()
@@ -163,8 +164,8 @@ func (session Session) blockingSend(method string, params interface{}) ([]byte, 
 		return nil, ErrSessionAlreadyClosed
 	case response := <-recv:
 		if response.Error.Code != 0 {
-			switch response.Error.Code {
-			case -32000:
+			switch response.Error.Message {
+			case "Cannot find context with specified id":
 				return nil, ErrStaleElementReference
 			default:
 				return nil, response.Error
