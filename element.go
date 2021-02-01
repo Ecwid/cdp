@@ -60,14 +60,9 @@ func (e *Element) clickablePoint() (x float64, y float64, err error) {
 	return x, y, nil
 }
 
-func (e *Element) scrollIntoView() (err error) {
-	_, err = e.call(atom.ScrollIntoView)
-	return
-}
-
 // Click ...
 func (e *Element) Click() error {
-	if err := e.scrollIntoView(); err != nil {
+	if err := e.session.scrollIntoViewIfNeeded(e.ID); err != nil {
 		return err
 	}
 	x, y, err := e.clickablePoint()
@@ -125,7 +120,7 @@ func (e *Element) IsVisible() (bool, error) {
 
 // Hover hover mouse on element
 func (e *Element) Hover() error {
-	if err := e.scrollIntoView(); err != nil {
+	if err := e.session.scrollIntoViewIfNeeded(e.ID); err != nil {
 		return err
 	}
 	x, y, err := e.clickablePoint()
@@ -137,7 +132,7 @@ func (e *Element) Hover() error {
 
 // Type ...
 func (e *Element) Type(text string, key ...rune) error {
-	if err := e.scrollIntoView(); err != nil {
+	if err := e.session.scrollIntoViewIfNeeded(e.ID); err != nil {
 		return err
 	}
 	v, err := e.IsVisible()

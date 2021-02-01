@@ -148,24 +148,34 @@ func Launch(ctx context.Context, userFlags ...string) (*Browser, error) {
 		return nil, err
 	}
 
+	// https: //github.com/GoogleChrome/chrome-launcher/blob/master/docs/chrome-flags-for-tools.md
 	flags := []string{
 		"about:blank", // open url
 		"--no-first-run",
 		"--no-default-browser-check",
 		"--remote-debugging-port=0",
 		"--hide-scrollbars",
+		"--mute-audio",
 		"--password-store=basic",
 		"--use-mock-keychain",
 		"--enable-automation",
 		"--disable-gpu",
+		"--disable-sync",
+		"--disable-background-networking",
 		"--disable-default-apps",
 		"--disable-extensions",
 		"--disable-browser-side-navigation",
-		"--disable-features=site-per-process,TranslateUI,BlinkGenPropertyTrees",
 		"--disable-background-timer-throttling",
 		"--disable-backgrounding-occluded-windows",
 		"--disable-renderer-backgrounding",
 		"--disable-hang-monitor",
+		"--disable-breakpad",
+		"--disable-client-side-phishing-detection",
+		"--disable-component-extensions-with-background-pages",
+		"--disable-ipc-flooding-protection",
+		"--disable-prompt-on-repost",
+		"--metrics-recording-only",
+		"--disable-features=site-per-process,TranslateUI,BlinkGenPropertyTrees",
 		"--enable-features=NetworkService,NetworkServiceInProcess",
 		"--user-data-dir=" + userDataDir,
 	}

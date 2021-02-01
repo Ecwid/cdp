@@ -19,6 +19,10 @@ func (d DOM) GetNode(objectID string) (*devtool.Node, error) {
 	return describeNode.Node, nil
 }
 
+func (d DOM) scrollIntoViewIfNeeded(objectID string) error {
+	return d.call("DOM.scrollIntoViewIfNeeded", Map{"objectId": objectID}, nil)
+}
+
 // GetContentQuads ...
 func (d DOM) GetContentQuads(objectID string, viewportCorrection bool) (devtool.Quad, error) {
 	cq := new(devtool.ContentQuads)
