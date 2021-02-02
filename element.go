@@ -14,12 +14,16 @@ type Element struct {
 	context int64
 }
 
-func newElement(s *Session, parent *Element, ID string) *Element {
+func newElement(s *Session, parent *Element, ID string) (*Element, error) {
+	c, err := s.currentContext()
+	if err != nil {
+		return nil, err
+	}
 	return &Element{
 		ID:      ID,
 		session: s,
-		context: s.currentContext(),
-	}
+		context: c,
+	}, nil
 }
 
 func (e *Element) call(functionDeclaration string, arg ...interface{}) (*devtool.RemoteObject, error) {

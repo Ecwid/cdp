@@ -32,8 +32,31 @@ type Emulation = Session
 // Page domain
 type Page = Session
 
+func (session Session) loadEventFired() func() error {
+	c := make(chan struct{})
+	unsubscribe := session.Subscribe("Page.loadEventFired", func(*Event) {
+		select {
+		case c <- struct{}{}:
+		default:
+		}
+	})
+	return func() error {
+		defer close(c)
+		defer unsubscribe()
+		select {
+		case <-c:
+			return nil
+		case <-session.closed:
+			return ErrSessionAlreadyClosed
+		case <-time.After(session.deadline):
+			return ErrLoadTimeout
+		}
+	}
+}
+
 // Navigate navigate to url
 func (session Session) Navigate(urlStr string) (err error) {
+	loader := session.loadEventFired()
 	nav := new(devtool.NavigationResult)
 	p := Map{
 		"url":            urlStr,
@@ -49,17 +72,17 @@ func (session Session) Navigate(urlStr string) (err error) {
 	if nav.LoaderID == "" {
 		return nil // no navigate need
 	}
-	session.state.lock() // force frameNavigated event
-	return session.newContext(nav.FrameID)
+	return loader()
 }
 
 // Reload refresh current page ignores cache
 func (session Session) Reload() error {
-	session.state.lock() // force frameNavigated event
+	loader := session.loadEventFired()
 	if err := session.call("Page.reload", Map{"ignoreCache": true}, nil); err != nil {
 		return err
 	}
-	return session.Main()
+	session.state.reset()
+	return loader()
 }
 
 // OnTargetCreated subscribe to Target.targetCreated event and return channel with targetID
@@ -94,13 +117,18 @@ func (session Session) OnTargetCreated(before func()) (*Session, error) {
 }
 
 // Main switch context to main frame of page
-func (session Session) Main() error {
-	return session.newContext(session.target)
+func (session Session) Main() {
+	session.state.reset()
 }
 
 // SwitchTo switch context to frame
 func (session *Session) SwitchTo(frameID string) error {
-	return session.newContext(frameID)
+	c, err := session.createContext(frameID)
+	if err != nil {
+		return err
+	}
+	session.state.set(frameID, c)
+	return nil
 }
 
 // Activate activate current Target

@@ -14,11 +14,12 @@ func (page Page) getNavigationHistory() (*devtool.NavigationHistory, error) {
 	return history, err
 }
 
-// CreateIsolatedWorld ....
-func (page Page) CreateIsolatedWorld(frameID, worldName string) (int64, error) {
+func (page Page) createIsolatedWorld(frameID, worldName string) (int64, error) {
 	result := Map{}
-	err := page.call("Page.createIsolatedWorld", Map{"frameId": frameID, "worldName": worldName}, &result)
-	return int64(result["executionContextId"].(float64)), err
+	if err := page.call("Page.createIsolatedWorld", Map{"frameId": frameID, "worldName": worldName}, &result); err != nil {
+		return 0, err
+	}
+	return int64(result["executionContextId"].(float64)), nil
 }
 
 func (page Page) navigateToHistoryEntry(entryID int64) error {
@@ -68,15 +69,14 @@ func (page Page) SetDownloadBehavior(behavior devtool.DownloadBehavior, download
 }
 
 func (session Session) query(parent *Element, selector string) (*Element, error) {
-	if err := session.state.wait(session.deadline); err != nil {
-		return nil, err
-	}
 	selector = strings.ReplaceAll(selector, `"`, `\"`)
 	var (
-		e       *devtool.RemoteObject
-		context = session.currentContext()
-		err     error
+		e            *devtool.RemoteObject
+		context, err = session.currentContext()
 	)
+	if err != nil {
+		return nil, err
+	}
 	if parent == nil {
 		e, err = session.evaluate(`document.querySelector("`+selector+`")`, context, false, false)
 	} else {
@@ -88,19 +88,18 @@ func (session Session) query(parent *Element, selector string) (*Element, error)
 	if e.ObjectID == "" {
 		return nil, NoSuchElementError{selector: selector, context: context}
 	}
-	return newElement(&session, parent, e.ObjectID), nil
+	return newElement(&session, parent, e.ObjectID)
 }
 
 func (session Session) queryAll(parent *Element, selector string) ([]*Element, error) {
-	if err := session.state.wait(session.deadline); err != nil {
-		return nil, err
-	}
 	selector = strings.ReplaceAll(selector, `"`, `\"`)
 	var (
-		context = session.currentContext()
-		array   *devtool.RemoteObject
-		err     error
+		array        *devtool.RemoteObject
+		context, err = session.currentContext()
 	)
+	if err != nil {
+		return nil, err
+	}
 	if parent == nil {
 		array, err = session.evaluate(`document.querySelectorAll("`+selector+`")`, context, false, false)
 	} else {
@@ -122,7 +121,11 @@ func (session Session) queryAll(parent *Element, selector string) ([]*Element, e
 		if !d.Enumerable {
 			continue
 		}
-		all = append(all, newElement(&session, parent, d.Value.ObjectID))
+		e, err := newElement(&session, parent, d.Value.ObjectID)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, e)
 	}
 	return all, nil
 }

@@ -76,7 +76,7 @@ func (session *Session) attachToTarget(targetID string) error {
 	session.ws.register(session.id, session.broadcast)
 	go session.listener()
 
-	session.newContext("")
+	session.state.reset()
 
 	if err := session.call("Target.setDiscoverTargets", Map{"discover": true}, nil); err != nil {
 		return err
@@ -93,7 +93,6 @@ func (session *Session) attachToTarget(targetID string) error {
 
 func (session Session) listener() {
 	defer func() {
-		session.state.unlock()
 		close(session.closed)
 		session.ws.unregister(session.id)
 	}()
@@ -120,12 +119,10 @@ func (session Session) listener() {
 				session.exception(err)
 				return
 			}
-			if session.target == event.Frame.ID {
-				session.state.lock()
+			if event.Frame.ID == session.state.GetFrame() {
+				session.ws.printf(LevelSessionState, "frame context destroyed %s", event.Frame.ID)
+				session.state.destroy()
 			}
-
-		case "Page.loadEventFired":
-			session.state.unlock()
 
 		case "Target.targetCrashed":
 			session.exception(errors.New(string(e.Params)))

@@ -22,6 +22,7 @@ const (
 	LevelProtocolMessage wLogLevel = 0x04 | LevelProtocolErrors
 	LevelProtocolEvents  wLogLevel = 0x08 | LevelProtocolErrors
 	LevelProtocolVerbose wLogLevel = LevelProtocolErrors | LevelProtocolMessage | LevelProtocolEvents
+	LevelSessionState    wLogLevel = 0x10 | LevelProtocolErrors
 )
 
 // WSClient ...
