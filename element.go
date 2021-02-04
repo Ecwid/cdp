@@ -134,7 +134,32 @@ func (e *Element) Hover() error {
 }
 
 // Type ...
-func (e *Element) Type(text string, key ...rune) error {
+func (e *Element) Type(text string) error {
+	if err := e.session.scrollIntoViewIfNeeded(e.ID); err != nil {
+		return err
+	}
+	if _, err := e.call(atomClearInput); err != nil {
+		return err
+	}
+	if err := e.Focus(); err != nil {
+		return err
+	}
+	for _, c := range text {
+		if isKey(c) {
+			if err := e.session.press(keyDefinitions[c]); err != nil {
+				return err
+			}
+		} else {
+			if err := e.session.InsertText(string(c)); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// InsertText ...
+func (e *Element) InsertText(text string, key ...rune) error {
 	if err := e.session.scrollIntoViewIfNeeded(e.ID); err != nil {
 		return err
 	}

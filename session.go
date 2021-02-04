@@ -219,6 +219,11 @@ func (session *Session) SetTimeout(dl time.Duration) {
 	session.deadline = dl
 }
 
+// SetOutLevel ...
+func (session *Session) SetOutLevel(level OutLevel) {
+	session.ws.outLevel = level
+}
+
 // Close close this sessions
 func (session Session) Close() error {
 	err := session.call("Target.closeTarget", Map{"targetId": session.target}, nil)

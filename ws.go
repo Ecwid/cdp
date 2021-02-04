@@ -13,16 +13,18 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type wLogLevel int64
+// OutLevel ...
+type OutLevel = int64
 
 // ws log levels
 const (
-	LevelProtocolFatal   wLogLevel = 0x01
-	LevelProtocolErrors  wLogLevel = 0x02 | LevelProtocolFatal
-	LevelProtocolMessage wLogLevel = 0x04 | LevelProtocolErrors
-	LevelProtocolEvents  wLogLevel = 0x08 | LevelProtocolErrors
-	LevelProtocolVerbose wLogLevel = LevelProtocolErrors | LevelProtocolMessage | LevelProtocolEvents
-	LevelSessionState    wLogLevel = 0x10 | LevelProtocolErrors
+	LevelProtocolFatal   OutLevel = 0x01
+	LevelProtocolErrors  OutLevel = 0x02 | LevelProtocolFatal
+	LevelProtocolMessage OutLevel = 0x04 | LevelProtocolErrors
+	LevelProtocolEvents  OutLevel = 0x08 | LevelProtocolErrors
+	LevelProtocolVerbose OutLevel = LevelProtocolErrors | LevelProtocolMessage | LevelProtocolEvents
+	LevelSessionState    OutLevel = 0x10 | LevelProtocolErrors
+	LevelVerbose         OutLevel = 0xFF
 )
 
 // WSClient ...
@@ -38,7 +40,7 @@ type WSClient struct {
 	disconnected  chan struct{}
 	err           chan error
 	out           *log.Logger
-	outLevel      wLogLevel
+	outLevel      OutLevel
 }
 
 type wsError struct {
@@ -135,11 +137,11 @@ func (w *WSClient) SetLogOutput(writer io.Writer) {
 }
 
 // SetLogLevel ...
-func (w *WSClient) SetLogLevel(level wLogLevel) {
+func (w *WSClient) SetLogLevel(level OutLevel) {
 	w.outLevel = level
 }
 
-func (w WSClient) printf(level wLogLevel, format string, v ...interface{}) {
+func (w WSClient) printf(level OutLevel, format string, v ...interface{}) {
 	if level&w.outLevel == level {
 		_, fn, line, _ := runtime.Caller(1)
 		w.out.Printf("%s:%d %s", fn, line, fmt.Sprintf(format, v...))
