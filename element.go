@@ -65,7 +65,7 @@ func (e *Element) clickablePoint() (x float64, y float64, err error) {
 
 // Click ...
 func (e *Element) Click() error {
-	if err := e.session.scrollIntoViewIfNeeded(e.ID); err != nil {
+	if err := e.ScrollIntoViewIfNeeded(); err != nil {
 		return err
 	}
 	x, y, err := e.clickablePoint()
@@ -123,7 +123,7 @@ func (e *Element) IsVisible() (bool, error) {
 
 // Hover hover mouse on element
 func (e *Element) Hover() error {
-	if err := e.session.scrollIntoViewIfNeeded(e.ID); err != nil {
+	if err := e.ScrollIntoViewIfNeeded(); err != nil {
 		return err
 	}
 	x, y, err := e.clickablePoint()
@@ -133,24 +133,36 @@ func (e *Element) Hover() error {
 	return e.session.MouseMove(x, y)
 }
 
+// Clear ...
+func (e *Element) Clear() error {
+	_, err := e.call(atomClearInput)
+	return err
+}
+
+// ScrollIntoViewIfNeeded ...
+func (e *Element) ScrollIntoViewIfNeeded() error {
+	return e.session.scrollIntoViewIfNeeded(e.ID)
+}
+
 // Type ...
 func (e *Element) Type(text string) error {
-	if err := e.session.scrollIntoViewIfNeeded(e.ID); err != nil {
+	var err error
+	if err = e.ScrollIntoViewIfNeeded(); err != nil {
 		return err
 	}
-	if _, err := e.call(atomClearInput); err != nil {
+	if err = e.Clear(); err != nil {
 		return err
 	}
-	if err := e.Focus(); err != nil {
+	if err = e.Focus(); err != nil {
 		return err
 	}
 	for _, c := range text {
 		if isKey(c) {
-			if err := e.session.press(keyDefinitions[c]); err != nil {
+			if err = e.session.press(keyDefinitions[c]); err != nil {
 				return err
 			}
 		} else {
-			if err := e.session.InsertText(string(c)); err != nil {
+			if err = e.session.InsertText(string(c)); err != nil {
 				return err
 			}
 		}
@@ -159,32 +171,22 @@ func (e *Element) Type(text string) error {
 }
 
 // InsertText ...
-func (e *Element) InsertText(text string, key ...rune) error {
-	if err := e.session.scrollIntoViewIfNeeded(e.ID); err != nil {
+func (e *Element) InsertText(text string) error {
+	var err error
+	if err = e.ScrollIntoViewIfNeeded(); err != nil {
 		return err
 	}
-	v, err := e.IsVisible()
-	if err != nil {
-		return err
-	}
-	if !v {
-		return ErrElementInvisible
-	}
-	if _, err = e.call(atomClearInput); err != nil {
+	if err = e.Clear(); err != nil {
 		return err
 	}
 	if err = e.Focus(); err != nil {
 		return err
 	}
-	// insert text, not typing
 	if err = e.session.InsertText(text); err != nil {
 		return err
 	}
-	if err := e.dispatchEvents("keypress", "input", "keyup", "change"); err != nil {
+	if err = e.dispatchEvents("keypress", "input", "keyup", "change"); err != nil {
 		return err
-	}
-	if key != nil {
-		return e.session.SendKeys(key...)
 	}
 	return nil
 }

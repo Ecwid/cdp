@@ -16,32 +16,14 @@ func (input Input) MouseMove(x, y float64) error {
 	return input.dispatchMouseEvent(x, y, dispatchMouseEventMoved, "none")
 }
 
-func (input Input) sendRune(c rune) error {
-	if err := input.call("Input.dispatchKeyEvent", Map{
-		"type":                  dispatchKeyEventKeyDown,
-		"windowsVirtualKeyCode": int(c),
-		"nativeVirtualKeyCode":  int(c),
-		"unmodifiedText":        string(c),
-		"text":                  string(c),
-	}, nil); err != nil {
-		return err
-	}
-	return input.call("Input.dispatchKeyEvent", Map{
-		"type":                  dispatchKeyEventKeyUp,
-		"windowsVirtualKeyCode": int(c),
-		"nativeVirtualKeyCode":  int(c),
-		"unmodifiedText":        string(c),
-		"text":                  string(c),
-	}, nil)
-}
-
 func (input Input) press(k keyDefinition) error {
 	if k.text == "" {
 		k.text = k.key
 	}
 	p := Map{
-		"type": dispatchKeyEventKeyDown,
-		"text": k.text,
+		"type":                  dispatchKeyEventKeyDown,
+		"windowsVirtualKeyCode": k.keyCode,
+		"text":                  k.text,
 	}
 	if err := input.call("Input.dispatchKeyEvent", p, nil); err != nil {
 		return err
@@ -66,16 +48,4 @@ func (input Input) dispatchMouseEvent(x float64, y float64, eventType string, bu
 		"y":          y,
 		"clickCount": 1,
 	}, nil)
-}
-
-// SendKeys send keyboard keys to focused element
-func (input Input) SendKeys(key ...rune) error {
-	var err error
-	for _, k := range key {
-		err = input.sendRune(k)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
