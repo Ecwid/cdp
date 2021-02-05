@@ -27,6 +27,8 @@ func (input Input) press(k keyDefinition) error {
 	}
 	p := Map{
 		"type":                  dispatchKeyEventKeyDown,
+		"key":                   k.key,
+		"code":                  k.code,
 		"windowsVirtualKeyCode": k.keyCode,
 		"text":                  k.text,
 	}
@@ -34,6 +36,8 @@ func (input Input) press(k keyDefinition) error {
 		return err
 	}
 	p = Map{
+		"key":  k.key,
+		"code": k.code,
 		"type": dispatchKeyEventKeyUp,
 		"text": k.text,
 	}
