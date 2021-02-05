@@ -28,4 +28,5 @@ var (
 	ErrConnectionClosed       = errors.New("websocket connection abnormal closure, browser may have died")
 	ErrTargetCreatedTimeout   = errors.New("target creation timeout was reached")
 	ErrLoadTimeout            = errors.New("load state timeout was reached")
+	ErrContextDetached        = errors.New("frame was detached")
 )

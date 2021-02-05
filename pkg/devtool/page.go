@@ -110,6 +110,12 @@ type FrameNavigated struct {
 	Frame *Frame `json:"frame"`
 }
 
+// FrameDetached https://chromedevtools.github.io/devtools-protocol/tot/Page/#event-frameDetached
+type FrameDetached struct {
+	FrameID string `json:"frameId"`
+	Reason  string `json:"reason"`
+}
+
 // FrameTreeResult https://chromedevtools.github.io/devtools-protocol/tot/Page#method-getFrameTree
 type FrameTreeResult struct {
 	FrameTree *FrameTree `json:"frameTree"`

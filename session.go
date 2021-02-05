@@ -120,8 +120,22 @@ func (session Session) listener() {
 				return
 			}
 			if event.Frame.ID == session.state.GetFrame() {
-				session.ws.printf(LevelSessionState, "frame context destroyed %s", event.Frame.ID)
-				session.state.destroy()
+				session.ws.printf(LevelSessionState, "frame context updated %s", event.Frame.ID)
+				session.state.resetContext()
+			}
+
+		// case "Page.frameAttached":
+		// session.ws.printf(LevelSessionState, "frame attached %s", string(e.Params))
+
+		case "Page.frameDetached":
+			event := new(devtool.FrameDetached)
+			if err := json.Unmarshal(e.Params, event); err != nil {
+				session.exception(err)
+				return
+			}
+			if event.FrameID == session.state.GetFrame() && event.Reason == "remove" {
+				session.ws.printf(LevelSessionState, "frame detached %s reason %s", event.FrameID, event.Reason)
+				session.state.detachContext()
 			}
 
 		case "Target.targetCrashed":
