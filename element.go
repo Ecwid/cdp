@@ -3,6 +3,7 @@ package cdp
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/ecwid/cdp/pkg/devtool"
 )
@@ -145,7 +146,7 @@ func (e *Element) ScrollIntoViewIfNeeded() error {
 }
 
 // Type ...
-func (e *Element) Type(text string) error {
+func (e *Element) Type(text string, delay time.Duration) error {
 	var err error
 	if err = e.ScrollIntoViewIfNeeded(); err != nil {
 		return err
@@ -161,6 +162,7 @@ func (e *Element) Type(text string) error {
 			if err = e.session.press(keyDefinitions[c]); err != nil {
 				return err
 			}
+			time.Sleep(delay)
 		} else {
 			if err = e.session.InsertText(string(c)); err != nil {
 				return err

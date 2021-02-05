@@ -29,10 +29,10 @@ func Te1stFrameRefresh(t *testing.T) {
 	check(t, err)
 	check(t, sess.SwitchTo(fid))
 	finp := get("#frameInput1")
-	check(t, finp.Type("123456"))
+	check(t, finp.Type("123456", 0))
 	check(t, get("#refresh").Click())
 	time.Sleep(time.Second * 2)
-	if err := finp.Type("654321"); err == nil {
+	if err := finp.Type("654321", 0); err == nil {
 		t.Fatalf("not expected error: %s", err.Error())
 	}
 }

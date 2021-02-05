@@ -16,6 +16,11 @@ func (input Input) MouseMove(x, y float64) error {
 	return input.dispatchMouseEvent(x, y, dispatchMouseEventMoved, "none")
 }
 
+// Press ...
+func (input Input) Press(c rune) error {
+	return input.press(keyDefinition{keyCode: int(c), text: string(c)})
+}
+
 func (input Input) press(k keyDefinition) error {
 	if k.text == "" {
 		k.text = k.key
