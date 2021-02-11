@@ -26,7 +26,8 @@ func (page Page) navigateToHistoryEntry(entryID int64) error {
 	return page.call("Page.navigateToHistoryEntry", Map{"entryId": entryID}, nil)
 }
 
-func (page Page) getLayoutMetrics() (*devtool.LayoutMetrics, error) {
+// GetLayoutMetrics ...
+func (page Page) GetLayoutMetrics() (*devtool.LayoutMetrics, error) {
 	metrics := new(devtool.LayoutMetrics)
 	err := page.call("Page.getLayoutMetrics", nil, metrics)
 	return metrics, err

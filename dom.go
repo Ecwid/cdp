@@ -33,7 +33,7 @@ func (d DOM) GetContentQuads(objectID string, viewportCorrection bool) (devtool.
 	if len(calc) == 0 { // should be at least one
 		return nil, ErrElementInvisible
 	}
-	metric, err := d.getLayoutMetrics()
+	metric, err := d.GetLayoutMetrics()
 	if err != nil {
 		return nil, err
 	}

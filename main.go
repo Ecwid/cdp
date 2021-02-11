@@ -185,7 +185,7 @@ func (session Session) GetNavigationEntry() (*devtool.NavigationEntry, error) {
 
 // FitToWindow ...
 func (session Session) FitToWindow() error {
-	view, err := session.getLayoutMetrics()
+	view, err := session.GetLayoutMetrics()
 	if err != nil {
 		return err
 	}
