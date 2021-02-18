@@ -84,6 +84,9 @@ func (session *Session) attachToTarget(targetID string) error {
 	if err = session.call("Page.enable", nil, nil); err != nil {
 		return err
 	}
+	if err = session.call("Runtime.enable", nil, nil); err != nil {
+		return err
+	}
 	// maxPostDataSize - Longest post body size (in bytes) that would be included in requestWillBeSent notification
 	if err = session.call("Network.enable", Map{"maxPostDataSize": 1024}, nil); err != nil {
 		return err
