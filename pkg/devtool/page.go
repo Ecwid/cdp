@@ -13,6 +13,16 @@ const (
 	DownloadBehaviorDefault DownloadBehavior = "default"
 )
 
+// DialogType ...
+type JavascriptDialogType string
+
+const (
+	DialogAlert        JavascriptDialogType = "alert"
+	DialogConfirm      JavascriptDialogType = "confirm"
+	DialogPrompt       JavascriptDialogType = "prompt"
+	DialogBeforeUnload JavascriptDialogType = "beforeunload"
+)
+
 // LifecycleEventType
 const (
 	DOMContentLoaded              LifecycleEventType = "DOMContentLoaded"
@@ -91,6 +101,15 @@ type LifecycleEvent struct {
 	LoaderID  string  `json:"loaderId"`
 	Name      string  `json:"name"`
 	Timestamp float64 `json:"timestamp"`
+}
+
+// JavascriptDialog https://chromedevtools.github.io/devtools-protocol/tot/Page/#event-javascriptDialogOpening
+type JavascriptDialog struct {
+	URL               string               `json:"url"`
+	Message           string               `json:"message"`
+	Type              JavascriptDialogType `json:"type"`
+	HasBrowserHandler bool                 `json:"hasBrowserHandler"`
+	DefaultPrompt     string               `json:"defaultPrompt"`
 }
 
 // Frame https://chromedevtools.github.io/devtools-protocol/tot/Page#type-Frame

@@ -33,7 +33,13 @@ func (page Page) GetLayoutMetrics() (*devtool.LayoutMetrics, error) {
 	return metrics, err
 }
 
-func (page Page) getFrameTree() (*devtool.FrameTree, error) {
+// HandleJavaScriptDialog ...
+func (page Page) HandleJavaScriptDialog(accept bool, promptText string) error {
+	return page.call("Page.handleJavaScriptDialog", Map{"accept": accept, "promptText": promptText}, nil)
+}
+
+// GetFrameTree ...
+func (page Page) GetFrameTree() (*devtool.FrameTree, error) {
 	tree := new(devtool.FrameTreeResult)
 	if err := page.call("Page.getFrameTree", nil, tree); err != nil {
 		return nil, err
