@@ -162,12 +162,15 @@ func (e *Element) Type(text string, delay time.Duration) error {
 			if err = e.session.press(keyDefinitions[c]); err != nil {
 				return err
 			}
-			time.Sleep(delay)
 		} else {
 			if err = e.session.InsertText(string(c)); err != nil {
 				return err
 			}
 		}
+		time.Sleep(delay)
+	}
+	if text == "" {
+		return e.dispatchEvents("keypress", "input", "keyup", "change")
 	}
 	return nil
 }
