@@ -10,25 +10,32 @@ import (
 
 // Element ...
 type Element struct {
-	session *Session
-	ID      string
-	context int64
+	session     *Session
+	ID          string
+	description string
+	context     int64
 }
 
-func newElement(s *Session, parent *Element, ID string) (*Element, error) {
+func newElement(s *Session, parent *Element, re *devtool.RemoteObject) (*Element, error) {
 	c, err := s.currentContext()
 	if err != nil {
 		return nil, err
 	}
 	return &Element{
-		ID:      ID,
-		session: s,
-		context: c,
+		ID:          re.ObjectID,
+		description: re.Description,
+		session:     s,
+		context:     c,
 	}, nil
 }
 
 func (e *Element) call(functionDeclaration string, arg ...interface{}) (*devtool.RemoteObject, error) {
 	return e.session.callFunctionOn(e.ID, functionDeclaration, arg...)
+}
+
+// Description ...
+func (e *Element) Description() string {
+	return e.description
 }
 
 // Call evaluate javascript for element, for example `function() {return this.innerHTML}`

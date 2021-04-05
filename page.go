@@ -95,7 +95,7 @@ func (session Session) query(parent *Element, selector string) (*Element, error)
 	if e.ObjectID == "" {
 		return nil, NoSuchElementError{selector: selector, context: context}
 	}
-	return newElement(&session, parent, e.ObjectID)
+	return newElement(&session, parent, e)
 }
 
 func (session Session) queryAll(parent *Element, selector string) ([]*Element, error) {
@@ -128,7 +128,7 @@ func (session Session) queryAll(parent *Element, selector string) ([]*Element, e
 		if !d.Enumerable {
 			continue
 		}
-		e, err := newElement(&session, parent, d.Value.ObjectID)
+		e, err := newElement(&session, parent, d.Value)
 		if err != nil {
 			return nil, err
 		}
