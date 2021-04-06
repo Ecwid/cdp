@@ -59,6 +59,14 @@ type EventListener struct {
 	BackendNodeID   int64         `json:"backendNodeId"`
 }
 
+// RGBA https://chromedevtools.github.io/devtools-protocol/tot/DOM/#type-RGBA
+type RGBA struct {
+	R uint8   `json:"r"` // [0-255]
+	G uint8   `json:"g"` // [0-255]
+	B uint8   `json:"b"` // [0-255]
+	A float32 `json:"a"` // [0-1]
+}
+
 // Quad https://chromedevtools.github.io/devtools-protocol/tot/DOM#type-Quad
 // type Quad []float64
 

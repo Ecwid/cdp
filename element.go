@@ -8,6 +8,10 @@ import (
 	"github.com/ecwid/cdp/pkg/devtool"
 )
 
+var HighlightConfig = &devtool.HighlightConfig{
+	ContentColor: &devtool.RGBA{R: 255, G: 0, B: 255, A: 0.3},
+}
+
 // Element ...
 type Element struct {
 	session     *Session
@@ -21,12 +25,16 @@ func newElement(s *Session, parent *Element, re *devtool.RemoteObject) (*Element
 	if err != nil {
 		return nil, err
 	}
-	return &Element{
+	var e = &Element{
 		ID:          re.ObjectID,
 		description: re.Description,
 		session:     s,
 		context:     c,
-	}, nil
+	}
+	if e.session.highlight {
+		err = e.Highlight()
+	}
+	return e, err
 }
 
 func (e *Element) call(functionDeclaration string, arg ...interface{}) (*devtool.RemoteObject, error) {
@@ -60,6 +68,11 @@ func (e *Element) Focus() error {
 // Upload upload files
 func (e *Element) Upload(files ...string) error {
 	return e.session.call("DOM.setFileInputFiles", Map{"files": files, "objectId": e.ID}, nil)
+}
+
+// Highlight ...
+func (e *Element) Highlight() error {
+	return e.session.call("Overlay.highlightNode", Map{"highlightConfig": HighlightConfig, "objectId": e.ID}, nil)
 }
 
 func (e *Element) clickablePoint() (x float64, y float64, err error) {

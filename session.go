@@ -27,6 +27,7 @@ type Session struct {
 	deadline    time.Duration
 	eventsMutex *sync.Mutex
 	listeners   map[string]*list.List
+	highlight   bool
 }
 
 func newSession(ws *WSClient) *Session {
@@ -40,6 +41,7 @@ func newSession(ws *WSClient) *Session {
 		closed:      make(chan struct{}, 1),
 		err:         make(chan error, 1),
 		deadline:    60 * time.Second,
+		highlight:   false,
 	}
 }
 
@@ -48,6 +50,30 @@ func NewSession(session *Session, target string) (*Session, error) {
 	newsess := newSession(session.ws)
 	err := newsess.attachToTarget(target)
 	return newsess, err
+}
+
+func (session *Session) OverlayEnable(state bool) (err error) {
+	session.highlight = state
+	if state {
+		if err = session.call("DOM.enable", nil, nil); err != nil {
+			return err
+		}
+		if err = session.call("Overlay.enable", nil, nil); err != nil {
+			return err
+		}
+	} else {
+		if err = session.call("Overlay.disable", nil, nil); err != nil {
+			return err
+		}
+		if err = session.call("DOM.disable", nil, nil); err != nil {
+			return err
+		}
+	}
+	return
+}
+
+func (session Session) IsOverlayEnabled() bool {
+	return session.highlight
 }
 
 // ID session's ID
@@ -234,6 +260,11 @@ func (session Session) GetID() string {
 // SetTimeout ...
 func (session *Session) SetTimeout(dl time.Duration) {
 	session.deadline = dl
+}
+
+// GetTimeout ...
+func (session Session) GetTimeout() time.Duration {
+	return session.deadline
 }
 
 // SetOutLevel ...

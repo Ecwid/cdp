@@ -27,6 +27,9 @@ func main() {
 	browser.GetWSClient().SetLogLevel(cdp.LevelProtocolFatal)
 
 	sess.SetTimeout(time.Second * 30)
+	if err := sess.OverlayEnable(true); err != nil {
+		panic(err)
+	}
 	sess.Navigate("https://mdemo.ecwid.com/")
 	sess.Navigate("https://mdemo.ecwid.com/#!/~/abc")
 
