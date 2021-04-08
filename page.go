@@ -78,12 +78,10 @@ func (page Page) SetDownloadBehavior(behavior devtool.DownloadBehavior, download
 func (session Session) query(parent *Element, selector string) (*Element, error) {
 	selector = strings.ReplaceAll(selector, `"`, `\"`)
 	var (
-		e            *devtool.RemoteObject
-		context, err = session.currentContext()
+		err     error
+		e       *devtool.RemoteObject
+		context = session.currentContext()
 	)
-	if err != nil {
-		return nil, err
-	}
 	if parent == nil {
 		e, err = session.evaluate(`document.querySelector("`+selector+`")`, context, false, false)
 	} else {
@@ -101,12 +99,10 @@ func (session Session) query(parent *Element, selector string) (*Element, error)
 func (session Session) queryAll(parent *Element, selector string) ([]*Element, error) {
 	selector = strings.ReplaceAll(selector, `"`, `\"`)
 	var (
-		array        *devtool.RemoteObject
-		context, err = session.currentContext()
+		err     error
+		array   *devtool.RemoteObject
+		context = session.currentContext()
 	)
-	if err != nil {
-		return nil, err
-	}
 	if parent == nil {
 		array, err = session.evaluate(`document.querySelectorAll("`+selector+`")`, context, false, false)
 	} else {

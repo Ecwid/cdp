@@ -21,20 +21,16 @@ type Element struct {
 }
 
 func newElement(s *Session, parent *Element, re *devtool.RemoteObject) (*Element, error) {
-	c, err := s.currentContext()
-	if err != nil {
-		return nil, err
-	}
 	var e = &Element{
 		ID:          re.ObjectID,
 		description: re.Description,
 		session:     s,
-		context:     c,
+		context:     s.currentContext(),
 	}
 	if e.session.highlight {
-		err = e.Highlight()
+		return e, e.Highlight()
 	}
-	return e, err
+	return e, nil
 }
 
 func (e *Element) call(functionDeclaration string, arg ...interface{}) (*devtool.RemoteObject, error) {

@@ -4,11 +4,7 @@ import "github.com/ecwid/cdp/pkg/devtool"
 
 // Evaluate evaluate javascript code at context of web page
 func (runtime Runtime) Evaluate(code string, async bool, returnByValue bool) (interface{}, error) {
-	context, err := runtime.currentContext()
-	if err != nil {
-		return "", err
-	}
-	result, err := runtime.evaluate(code, context, async, returnByValue)
+	result, err := runtime.evaluate(code, runtime.currentContext(), async, returnByValue)
 	if err != nil {
 		return "", err
 	}

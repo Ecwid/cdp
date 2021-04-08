@@ -4,11 +4,6 @@ import (
 	"sync"
 )
 
-const (
-	resetContext  = -1
-	detachContext = -2
-)
-
 type state struct {
 	sync.Mutex
 	context int64
@@ -41,27 +36,10 @@ func (l *state) reset() {
 	l.set("", 0)
 }
 
-func (l *state) resetContext() {
-	l.set(l.GetFrame(), resetContext)
-}
-
-func (l *state) detachContext() {
-	l.set(l.GetFrame(), detachContext)
-}
-
-func (session *Session) currentContext() (int64, error) {
+func (session *Session) currentContext() int64 {
 	session.state.Lock()
 	defer session.state.Unlock()
-	if session.state.context == resetContext {
-		var err error
-		session.state.context, err = session.createContext(session.state.frame)
-		if err != nil {
-			return -1, err
-		}
-	} else if session.state.context == detachContext {
-		return 0, ErrContextDetached
-	}
-	return session.state.context, nil
+	return session.state.context
 }
 
 func (session *Session) createContext(frameID string) (int64, error) {
