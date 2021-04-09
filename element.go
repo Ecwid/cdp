@@ -20,17 +20,17 @@ type Element struct {
 	context     int64
 }
 
-func newElement(s *Session, parent *Element, re *devtool.RemoteObject) (*Element, error) {
+func newElement(s *Session, parent *Element, re *devtool.RemoteObject) *Element {
 	var e = &Element{
 		ID:          re.ObjectID,
 		description: re.Description,
 		session:     s,
 		context:     s.currentContext(),
 	}
-	if e.session.highlight {
-		return e, e.Highlight()
+	if s.OnElementBinded != nil {
+		s.OnElementBinded(e)
 	}
-	return e, nil
+	return e
 }
 
 func (e *Element) call(functionDeclaration string, arg ...interface{}) (*devtool.RemoteObject, error) {

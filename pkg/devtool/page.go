@@ -146,6 +146,24 @@ type FrameTree struct {
 	ChildFrames []*FrameTree `json:"childFrames"`
 }
 
+// ScreencastFrameMetadata https://chromedevtools.github.io/devtools-protocol/tot/Page/#type-ScreencastFrameMetadata
+type ScreencastFrameMetadata struct {
+	OffsetTop       float64 `json:"offsetTop"`           // Top offset in DIP.
+	PageScaleFactor float64 `json:"pageScaleFactor"`     // Page scale factor.
+	DeviceWidth     float64 `json:"deviceWidth"`         // Device screen width in DIP.
+	DeviceHeight    float64 `json:"deviceHeight"`        // Device screen height in DIP.
+	ScrollOffsetX   float64 `json:"scrollOffsetX"`       // Position of horizontal scroll in CSS pixels.
+	ScrollOffsetY   float64 `json:"scrollOffsetY"`       // Position of vertical scroll in CSS pixels.
+	Timestamp       float64 `json:"timestamp,omitempty"` // Frame swap timestamp.
+}
+
+// ScreencastFrame ...
+type ScreencastFrame struct {
+	Data      []byte                  `json:"data"`      // Base64-encoded compressed image. (Encoded as a base64 string when passed over JSON)
+	Metadata  ScreencastFrameMetadata `json:"metadata"`  // Screencast frame metadata.
+	SessionID int                     `json:"sessionId"` // Frame number.
+}
+
 // Look look for frame with ID
 func (f FrameTree) Look(ID string) *Frame {
 	if f.Frame.ID == ID {

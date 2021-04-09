@@ -17,31 +17,31 @@ type Map map[string]interface{}
 
 // Session ...
 type Session struct {
-	ws          *WSClient
-	id          string
-	state       *state
-	target      string
-	broadcast   chan *wsBroadcast
-	closed      chan struct{}
-	err         chan error
-	deadline    time.Duration
-	eventsMutex *sync.Mutex
-	listeners   map[string]*list.List
-	highlight   bool
+	ws              *WSClient
+	id              string
+	state           *state
+	target          string
+	broadcast       chan *wsBroadcast
+	closed          chan struct{}
+	err             chan error
+	deadline        time.Duration
+	eventsMutex     *sync.Mutex
+	listeners       map[string]*list.List
+	OnElementBinded func(e *Element)
 }
 
 func newSession(ws *WSClient) *Session {
 	return &Session{
-		id:          "",
-		ws:          ws,
-		eventsMutex: &sync.Mutex{},
-		state:       newState(),
-		listeners:   map[string]*list.List{},
-		broadcast:   make(chan *wsBroadcast, 10),
-		closed:      make(chan struct{}, 1),
-		err:         make(chan error, 1),
-		deadline:    60 * time.Second,
-		highlight:   false,
+		id:              "",
+		ws:              ws,
+		eventsMutex:     &sync.Mutex{},
+		state:           newState(),
+		listeners:       map[string]*list.List{},
+		broadcast:       make(chan *wsBroadcast, 10),
+		closed:          make(chan struct{}, 1),
+		err:             make(chan error, 1),
+		deadline:        60 * time.Second,
+		OnElementBinded: nil,
 	}
 }
 
@@ -50,30 +50,6 @@ func NewSession(session *Session, target string) (*Session, error) {
 	newsess := newSession(session.ws)
 	err := newsess.attachToTarget(target)
 	return newsess, err
-}
-
-func (session *Session) OverlayEnable(state bool) (err error) {
-	session.highlight = state
-	if state {
-		if err = session.call("DOM.enable", nil, nil); err != nil {
-			return err
-		}
-		if err = session.call("Overlay.enable", nil, nil); err != nil {
-			return err
-		}
-	} else {
-		if err = session.call("Overlay.disable", nil, nil); err != nil {
-			return err
-		}
-		if err = session.call("DOM.disable", nil, nil); err != nil {
-			return err
-		}
-	}
-	return
-}
-
-func (session Session) IsOverlayEnabled() bool {
-	return session.highlight
 }
 
 // ID session's ID
@@ -111,6 +87,12 @@ func (session *Session) attachToTarget(targetID string) error {
 		return err
 	}
 	if err = session.call("Runtime.enable", nil, nil); err != nil {
+		return err
+	}
+	if err = session.call("DOM.enable", nil, nil); err != nil {
+		return err
+	}
+	if err = session.call("Overlay.enable", nil, nil); err != nil {
 		return err
 	}
 	// maxPostDataSize - Longest post body size (in bytes) that would be included in requestWillBeSent notification
