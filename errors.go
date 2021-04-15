@@ -13,7 +13,7 @@ type NoSuchElementError struct {
 }
 
 func (e NoSuchElementError) Error() string {
-	return fmt.Sprintf("no such element")
+	return fmt.Sprintf("no such element %s", e.selector)
 }
 
 // cdp errors
