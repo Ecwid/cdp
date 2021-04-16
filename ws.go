@@ -46,7 +46,7 @@ type WSClient struct {
 type wsError struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
-	Data    []byte `json:"data,omitempty"`
+	Data    string `json:"data,omitempty"`
 }
 
 func (e wsError) Error() string {

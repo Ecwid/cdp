@@ -9,35 +9,51 @@ type DescribeNode struct {
 	Node *Node `json:"node"`
 }
 
+type NodeID int64
+type BackendNodeID int64
+
+type Document struct {
+	Root *Node `json:"root"`
+}
+
+type QuerySelector struct {
+	NodeID NodeID `json:"nodeId"`
+}
+
+type ChildNodes struct {
+	ParentID NodeID  `json:"parentId"`
+	Nodes    []*Node `json:"nodes"`
+}
+
 // Node https://chromedevtools.github.io/devtools-protocol/tot/DOM#type-Node
 type Node struct {
-	NodeID           int64    `json:"nodeId"`
-	ParentID         int64    `json:"parentId"`
-	BackendNodeID    int64    `json:"backendNodeId"`
-	NodeType         int64    `json:"nodeType"`
-	NodeName         string   `json:"nodeName"`
-	LocalName        string   `json:"localName"`
-	NodeValue        string   `json:"nodeValue"`
-	ChildNodeCount   int64    `json:"childNodeCount"`
-	Children         []*Node  `json:"children"`
-	Attributes       []string `json:"attributes"`
-	DocumentURL      string   `json:"documentURL"`
-	BaseURL          string   `json:"baseURL"`
-	PublicID         string   `json:"publicId"`
-	SystemID         string   `json:"systemId"`
-	InternalSubset   string   `json:"internalSubset"`
-	XMLVersion       string   `json:"xmlVersion"`
-	Name             string   `json:"name"`
-	Value            string   `json:"value"`
-	PseudoType       string   `json:"pseudoType"`
-	ShadowRootType   string   `json:"shadowRootType"`
-	FrameID          string   `json:"frameId"`
-	ContentDocument  *Node    `json:"contentDocument"`
-	ShadowRoots      []*Node  `json:"shadowRoots"`
-	TemplateContent  *Node    `json:"templateContent"`
-	PseudoElements   []*Node  `json:"pseudoElements"`
-	ImportedDocument *Node    `json:"importedDocument"`
-	IsSVG            bool     `json:"isSVG"`
+	NodeID           NodeID        `json:"nodeId"`
+	ParentID         int64         `json:"parentId"`
+	BackendNodeID    BackendNodeID `json:"backendNodeId"`
+	NodeType         int64         `json:"nodeType"`
+	NodeName         string        `json:"nodeName"`
+	LocalName        string        `json:"localName"`
+	NodeValue        string        `json:"nodeValue"`
+	ChildNodeCount   int64         `json:"childNodeCount"`
+	Children         []*Node       `json:"children"`
+	Attributes       []string      `json:"attributes"`
+	DocumentURL      string        `json:"documentURL"`
+	BaseURL          string        `json:"baseURL"`
+	PublicID         string        `json:"publicId"`
+	SystemID         string        `json:"systemId"`
+	InternalSubset   string        `json:"internalSubset"`
+	XMLVersion       string        `json:"xmlVersion"`
+	Name             string        `json:"name"`
+	Value            string        `json:"value"`
+	PseudoType       string        `json:"pseudoType"`
+	ShadowRootType   string        `json:"shadowRootType"`
+	FrameID          string        `json:"frameId"`
+	ContentDocument  *Node         `json:"contentDocument"`
+	ShadowRoots      []*Node       `json:"shadowRoots"`
+	TemplateContent  *Node         `json:"templateContent"`
+	PseudoElements   []*Node       `json:"pseudoElements"`
+	ImportedDocument *Node         `json:"importedDocument"`
+	IsSVG            bool          `json:"isSVG"`
 }
 
 // EventListeners https://chromedevtools.github.io/devtools-protocol/tot/DOMDebugger#type-EventListener
@@ -56,7 +72,7 @@ type EventListener struct {
 	ColumnNumber    int64         `json:"columnNumber"`
 	Handler         *RemoteObject `json:"handler"`
 	OriginalHandler *RemoteObject `json:"originalHandler"`
-	BackendNodeID   int64         `json:"backendNodeId"`
+	BackendNodeID   BackendNodeID `json:"backendNodeId"`
 }
 
 // RGBA https://chromedevtools.github.io/devtools-protocol/tot/DOM/#type-RGBA
