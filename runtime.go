@@ -45,7 +45,7 @@ func (runtime Runtime) getProperties(objectID string) ([]*devtool.PropertyDescri
 	return result.Result, nil
 }
 
-func (runtime Runtime) callFunctionOn(objectID string, functionDeclaration string, arg ...interface{}) (*devtool.RemoteObject, error) {
+func (runtime Runtime) callFunctionOn(objectID string, functionDeclaration string, awaitPromise, returnByValue bool, arg ...interface{}) (*devtool.RemoteObject, error) {
 	args := make([]devtool.CallArgument, len(arg))
 	for i, a := range arg {
 		args[i] = devtool.CallArgument{Value: a}
@@ -54,8 +54,8 @@ func (runtime Runtime) callFunctionOn(objectID string, functionDeclaration strin
 		"functionDeclaration": functionDeclaration,
 		"objectId":            objectID,
 		"arguments":           args,
-		"awaitPromise":        true,
-		"returnByValue":       false,
+		"awaitPromise":        awaitPromise,
+		"returnByValue":       returnByValue,
 	}
 	result := new(devtool.EvaluatesResult)
 	if err := runtime.call("Runtime.callFunctionOn", p, result); err != nil {

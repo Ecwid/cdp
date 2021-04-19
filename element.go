@@ -34,7 +34,7 @@ func newElement(s *Session, parent *Element, re *devtool.RemoteObject) *Element 
 }
 
 func (e *Element) call(functionDeclaration string, arg ...interface{}) (*devtool.RemoteObject, error) {
-	return e.session.callFunctionOn(e.ID, functionDeclaration, arg...)
+	return e.session.callFunctionOn(e.ID, functionDeclaration, true, false, arg...)
 }
 
 // Description ...
