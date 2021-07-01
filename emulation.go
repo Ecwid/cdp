@@ -42,6 +42,11 @@ func (session Emulation) SetCPUThrottlingRate(rate int) error {
 	return session.call("Emulation.setCPUThrottlingRate", Map{"rate": rate}, nil)
 }
 
+// SetDocumentCookieDisabled https://chromedevtools.github.io/devtools-protocol/tot/Emulation/#method-setDocumentCookieDisabled
+func (session Emulation) SetDocumentCookieDisabled(disabled bool) error {
+	return session.call("Emulation.setDocumentCookieDisabled", Map{"disabled": disabled}, nil)
+}
+
 // Emulate emulate predefined device
 func (session Emulation) Emulate(device *mobile.Device) error {
 	f := true
