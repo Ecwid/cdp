@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"log"
 	"math"
 	"sync"
 	"time"
@@ -69,7 +68,6 @@ func (session Session) eventFired(method string, filter func(*Event) bool) func(
 
 // Navigate navigate to url
 func (session Session) Navigate(urlStr string, lifecycleEvents ...devtool.LifecycleEventType) (err error) {
-	log.Print(session.target)
 	var loader = []func() error{
 		session.eventFired("Page.loadEventFired", nil), // required load event
 	}
