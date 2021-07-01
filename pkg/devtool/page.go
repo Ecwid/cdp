@@ -97,10 +97,10 @@ type NavigationHistory struct {
 
 // LifecycleEvent https://chromedevtools.github.io/devtools-protocol/tot/Page#event-lifecycleEvent
 type LifecycleEvent struct {
-	FrameID   string  `json:"frameId"`
-	LoaderID  string  `json:"loaderId"`
-	Name      string  `json:"name"`
-	Timestamp float64 `json:"timestamp"`
+	FrameID   string             `json:"frameId"`
+	LoaderID  string             `json:"loaderId"`
+	Name      LifecycleEventType `json:"name"`
+	Timestamp float64            `json:"timestamp"`
 }
 
 // JavascriptDialog https://chromedevtools.github.io/devtools-protocol/tot/Page/#event-javascriptDialogOpening

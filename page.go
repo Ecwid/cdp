@@ -8,54 +8,54 @@ import (
 
 const blankPage = "about:blank"
 
-func (page Page) getNavigationHistory() (*devtool.NavigationHistory, error) {
+func (session Page) getNavigationHistory() (*devtool.NavigationHistory, error) {
 	history := new(devtool.NavigationHistory)
-	err := page.call("Page.getNavigationHistory", nil, history)
+	err := session.call("Page.getNavigationHistory", nil, history)
 	return history, err
 }
 
-func (page Page) createIsolatedWorld(frameID, worldName string) (int64, error) {
+func (session Page) createIsolatedWorld(frameID, worldName string) (int64, error) {
 	result := Map{}
-	if err := page.call("Page.createIsolatedWorld", Map{"frameId": frameID, "worldName": worldName}, &result); err != nil {
+	if err := session.call("Page.createIsolatedWorld", Map{"frameId": frameID, "worldName": worldName}, &result); err != nil {
 		return 0, err
 	}
 	return int64(result["executionContextId"].(float64)), nil
 }
 
-func (page Page) navigateToHistoryEntry(entryID int64) error {
-	return page.call("Page.navigateToHistoryEntry", Map{"entryId": entryID}, nil)
+func (session Page) navigateToHistoryEntry(entryID int64) error {
+	return session.call("Page.navigateToHistoryEntry", Map{"entryId": entryID}, nil)
 }
 
 // GetLayoutMetrics ...
-func (page Page) GetLayoutMetrics() (*devtool.LayoutMetrics, error) {
+func (session Page) GetLayoutMetrics() (*devtool.LayoutMetrics, error) {
 	metrics := new(devtool.LayoutMetrics)
-	err := page.call("Page.getLayoutMetrics", nil, metrics)
+	err := session.call("Page.getLayoutMetrics", nil, metrics)
 	return metrics, err
 }
 
 // HandleJavaScriptDialog ...
-func (page Page) HandleJavaScriptDialog(accept bool, promptText string) error {
-	return page.call("Page.handleJavaScriptDialog", Map{"accept": accept, "promptText": promptText}, nil)
+func (session Page) HandleJavaScriptDialog(accept bool, promptText string) error {
+	return session.call("Page.handleJavaScriptDialog", Map{"accept": accept, "promptText": promptText}, nil)
 }
 
 // GetFrameTree ...
-func (page Page) GetFrameTree() (*devtool.FrameTree, error) {
+func (session Page) GetFrameTree() (*devtool.FrameTree, error) {
 	tree := new(devtool.FrameTreeResult)
-	if err := page.call("Page.getFrameTree", nil, tree); err != nil {
+	if err := session.call("Page.getFrameTree", nil, tree); err != nil {
 		return nil, err
 	}
 	return tree.FrameTree, nil
 }
 
 // Activate activate current Target
-func (page Page) activate(targetID string) error {
-	return page.call("Target.activateTarget", Map{"targetId": targetID}, nil)
+func (session Page) activate(targetID string) error {
+	return session.call("Target.activateTarget", Map{"targetId": targetID}, nil)
 }
 
 // AddScriptToEvaluateOnNewDocument https://chromedevtools.github.io/devtools-protocol/tot/Page#method-addScriptToEvaluateOnNewDocument
-func (page Page) AddScriptToEvaluateOnNewDocument(source string) (string, error) {
+func (session Page) AddScriptToEvaluateOnNewDocument(source string) (string, error) {
 	var result = Map{}
-	err := page.call("Page.addScriptToEvaluateOnNewDocument", Map{"source": source}, &result)
+	err := session.call("Page.addScriptToEvaluateOnNewDocument", Map{"source": source}, &result)
 	if err != nil {
 		return "", err
 	}
@@ -63,13 +63,13 @@ func (page Page) AddScriptToEvaluateOnNewDocument(source string) (string, error)
 }
 
 // RemoveScriptToEvaluateOnNewDocument https://chromedevtools.github.io/devtools-protocol/tot/Page#method-removeScriptToEvaluateOnNewDocument
-func (page Page) RemoveScriptToEvaluateOnNewDocument(identifier string) error {
-	return page.call("Page.removeScriptToEvaluateOnNewDocument", Map{"identifier": identifier}, nil)
+func (session Page) RemoveScriptToEvaluateOnNewDocument(identifier string) error {
+	return session.call("Page.removeScriptToEvaluateOnNewDocument", Map{"identifier": identifier}, nil)
 }
 
 // SetDownloadBehavior https://chromedevtools.github.io/devtools-protocol/tot/Page#method-setDownloadBehavior
-func (page Page) SetDownloadBehavior(behavior devtool.DownloadBehavior, downloadPath string) error {
-	return page.call("Page.setDownloadBehavior", Map{
+func (session Page) SetDownloadBehavior(behavior devtool.DownloadBehavior, downloadPath string) error {
+	return session.call("Page.setDownloadBehavior", Map{
 		"behavior":     string(behavior),
 		"downloadPath": downloadPath,
 	}, nil)

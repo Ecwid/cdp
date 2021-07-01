@@ -7,33 +7,33 @@ import (
 )
 
 // GetNode ...
-func (d DOM) GetNode(objectID string) (*devtool.Node, error) {
+func (session DOM) GetNode(objectID string) (*devtool.Node, error) {
 	p := Map{
 		"objectId": objectID,
 		"depth":    1,
 	}
 	describeNode := new(devtool.DescribeNode)
-	if err := d.call("DOM.describeNode", p, describeNode); err != nil {
+	if err := session.call("DOM.describeNode", p, describeNode); err != nil {
 		return nil, err
 	}
 	return describeNode.Node, nil
 }
 
-func (d DOM) scrollIntoViewIfNeeded(objectID string) error {
-	return d.call("DOM.scrollIntoViewIfNeeded", Map{"objectId": objectID}, nil)
+func (session DOM) scrollIntoViewIfNeeded(objectID string) error {
+	return session.call("DOM.scrollIntoViewIfNeeded", Map{"objectId": objectID}, nil)
 }
 
 // GetContentQuads ...
-func (d DOM) GetContentQuads(objectID string, viewportCorrection bool) (devtool.Quad, error) {
+func (session DOM) GetContentQuads(objectID string, viewportCorrection bool) (devtool.Quad, error) {
 	cq := new(devtool.ContentQuads)
-	if err := d.call("DOM.getContentQuads", Map{"objectId": objectID}, cq); err != nil {
+	if err := session.call("DOM.getContentQuads", Map{"objectId": objectID}, cq); err != nil {
 		return nil, err
 	}
 	calc := cq.Calc()
 	if len(calc) == 0 { // should be at least one
 		return nil, ErrElementInvisible
 	}
-	metric, err := d.GetLayoutMetrics()
+	metric, err := session.GetLayoutMetrics()
 	if err != nil {
 		return nil, err
 	}

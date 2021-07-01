@@ -8,23 +8,23 @@ import (
 )
 
 // ClearBrowserCookies ...
-func (net Network) ClearBrowserCookies() error {
-	return net.call("Network.clearBrowserCookies", nil, nil)
+func (session Network) ClearBrowserCookies() error {
+	return session.call("Network.clearBrowserCookies", nil, nil)
 }
 
 // SetCookies ...
-func (net Network) SetCookies(cookies ...*devtool.Cookie) error {
-	return net.call("Network.setCookies", Map{"cookies": cookies}, nil)
+func (session Network) SetCookies(cookies ...*devtool.Cookie) error {
+	return session.call("Network.setCookies", Map{"cookies": cookies}, nil)
 }
 
 // GetCookies returns all browser cookies for the current URL
-func (net Network) GetCookies(urls ...string) ([]*devtool.Cookie, error) {
+func (session Network) GetCookies(urls ...string) ([]*devtool.Cookie, error) {
 	p := Map{}
 	if urls != nil {
 		p["urls"] = urls
 	}
 	cookies := new(devtool.GetCookies)
-	err := net.call("Network.getCookies", p, cookies)
+	err := session.call("Network.getCookies", p, cookies)
 	if err != nil {
 		return nil, err
 	}
@@ -32,30 +32,30 @@ func (net Network) GetCookies(urls ...string) ([]*devtool.Cookie, error) {
 }
 
 // SetExtraHTTPHeaders Specifies whether to always send extra HTTP headers with the requests from this page.
-func (net Network) SetExtraHTTPHeaders(headers map[string]string) error {
-	return net.call("Network.setExtraHTTPHeaders", Map{"headers": headers}, nil)
+func (session Network) SetExtraHTTPHeaders(headers map[string]string) error {
+	return session.call("Network.setExtraHTTPHeaders", Map{"headers": headers}, nil)
 }
 
 // SetOffline set offline/online mode
 // SetOffline(false) - reset all network conditions to default
-func (net Network) SetOffline(e bool) error {
-	return net.emulateNetworkConditions(e, 0, -1, -1)
+func (session Network) SetOffline(e bool) error {
+	return session.emulateNetworkConditions(e, 0, -1, -1)
 }
 
 // SetThrottling set latency in milliseconds, download & upload throttling in bytes per second
-func (net Network) SetThrottling(latencyMs, downloadThroughputBps, uploadThroughputBps int) error {
-	return net.emulateNetworkConditions(false, latencyMs, downloadThroughputBps, downloadThroughputBps)
+func (session Network) SetThrottling(latencyMs, downloadThroughputBps, uploadThroughputBps int) error {
+	return session.emulateNetworkConditions(false, latencyMs, downloadThroughputBps, downloadThroughputBps)
 }
 
 // SetBlockedURLs ...
-func (net Network) SetBlockedURLs(urls []string) error {
-	return net.call("Network.setBlockedURLs", Map{"urls": urls}, nil)
+func (session Network) SetBlockedURLs(urls []string) error {
+	return session.call("Network.setBlockedURLs", Map{"urls": urls}, nil)
 }
 
 // GetRequestPostData https://chromedevtools.github.io/devtools-protocol/tot/Network/#method-getRequestPostData
-func (net Network) GetRequestPostData(requestID string) (string, error) {
+func (session Network) GetRequestPostData(requestID string) (string, error) {
 	result := new(devtool.RequestPostData)
-	err := net.call("Network.getRequestPostData", Map{"requestId": requestID}, result)
+	err := session.call("Network.getRequestPostData", Map{"requestId": requestID}, result)
 	if err != nil {
 		return "", err
 	}
@@ -63,9 +63,9 @@ func (net Network) GetRequestPostData(requestID string) (string, error) {
 }
 
 // GetResponseBody https://chromedevtools.github.io/devtools-protocol/tot/Network/#method-getResponseBody
-func (net Network) GetResponseBody(requestID string) (string, error) {
+func (session Network) GetResponseBody(requestID string) (string, error) {
 	result := new(devtool.ResponseBody)
-	err := net.call("Network.getResponseBody", Map{"requestId": requestID}, result)
+	err := session.call("Network.getResponseBody", Map{"requestId": requestID}, result)
 	if err != nil {
 		return "", err
 	}
@@ -76,27 +76,27 @@ func (net Network) GetResponseBody(requestID string) (string, error) {
 	return result.Body, nil
 }
 
-func (net Network) emulateNetworkConditions(offline bool, latencyMs, downloadThroughputBps, uploadThroughputBps int) error {
+func (session Network) emulateNetworkConditions(offline bool, latencyMs, downloadThroughputBps, uploadThroughputBps int) error {
 	p := Map{
 		"offline":            offline,
 		"latency":            latencyMs,
 		"downloadThroughput": downloadThroughputBps,
 		"uploadThroughput":   uploadThroughputBps,
 	}
-	return net.call("Network.emulateNetworkConditions", p, nil)
+	return session.call("Network.emulateNetworkConditions", p, nil)
 }
 
 // fetchEnable https://chromedevtools.github.io/devtools-protocol/tot/Fetch#method-enable
-func (net Network) fetchEnable(patterns []*devtool.RequestPattern, handleAuthRequests bool) error {
-	return net.call("Fetch.enable", Map{
+func (session Network) fetchEnable(patterns []*devtool.RequestPattern, handleAuthRequests bool) error {
+	return session.call("Fetch.enable", Map{
 		"patterns":           patterns,
 		"handleAuthRequests": handleAuthRequests,
 	}, nil)
 }
 
 // fetchDisable https://chromedevtools.github.io/devtools-protocol/tot/Fetch#method-disable
-func (net Network) fetchDisable() error {
-	return net.call("Fetch.disable", nil, nil)
+func (session Network) fetchDisable() error {
+	return session.call("Fetch.disable", nil, nil)
 }
 
 // Fail https://chromedevtools.github.io/devtools-protocol/tot/Fetch#method-failRequest
@@ -154,22 +154,22 @@ type Interceptor struct {
 }
 
 // Intercept ...
-func (net Network) Intercept(patterns []*devtool.RequestPattern, fn func(*devtool.RequestPaused, *Interceptor)) func() {
-	unsubscribe := net.Subscribe("Fetch.requestPaused", func(e *Event) {
+func (session Network) Intercept(patterns []*devtool.RequestPattern, fn func(*devtool.RequestPaused, *Interceptor)) func() {
+	unsubscribe := session.Subscribe("Fetch.requestPaused", func(e *Event) {
 		request := new(devtool.RequestPaused)
 		if err := json.Unmarshal(e.Params, request); err != nil {
-			net.exception(err)
+			session.exception(err)
 			return
 		}
-		go fn(request, &Interceptor{Network: &net})
+		go fn(request, &Interceptor{Network: &session})
 	})
-	if err := net.fetchEnable(patterns, false); err != nil {
-		net.exception(err)
+	if err := session.fetchEnable(patterns, false); err != nil {
+		session.exception(err)
 	}
 	return func() {
 		unsubscribe()
-		if err := net.fetchDisable(); err != nil {
-			net.exception(err)
+		if err := session.fetchDisable(); err != nil {
+			session.exception(err)
 		}
 	}
 }

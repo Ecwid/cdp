@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"log"
 	"math"
 	"sync"
 	"time"
@@ -32,12 +33,24 @@ type Emulation = Session
 // Page domain
 type Page = Session
 
-func (session Session) loadEventFired() func() error {
-	c := make(chan struct{})
-	unsubscribe := session.Subscribe("Page.loadEventFired", func(*Event) {
-		select {
-		case c <- struct{}{}:
-		default:
+func (session Session) lifecycleEvent(eventType devtool.LifecycleEventType) func() error {
+	return session.eventFired("Page.lifecycleEvent", func(e *Event) bool {
+		var lifecycle = new(devtool.LifecycleEvent)
+		if err := json.Unmarshal(e.Params, lifecycle); err != nil {
+			session.exception(err)
+		}
+		return lifecycle.FrameID == session.target && lifecycle.Name == eventType
+	})
+}
+
+func (session Session) eventFired(method string, filter func(*Event) bool) func() error {
+	var c = make(chan struct{}, 1)
+	unsubscribe := session.Subscribe(method, func(e *Event) {
+		if filter == nil || filter(e) {
+			select {
+			case c <- struct{}{}:
+			default:
+			}
 		}
 	})
 	return func() error {
@@ -55,8 +68,15 @@ func (session Session) loadEventFired() func() error {
 }
 
 // Navigate navigate to url
-func (session Session) Navigate(urlStr string) (err error) {
-	loader := session.loadEventFired()
+func (session Session) Navigate(urlStr string, lifecycleEvents ...devtool.LifecycleEventType) (err error) {
+	log.Print(session.target)
+	var loader = []func() error{
+		session.eventFired("Page.loadEventFired", nil), // required load event
+	}
+	// optional load events
+	for _, lc := range lifecycleEvents {
+		loader = append(loader, session.lifecycleEvent(lc))
+	}
 	nav := new(devtool.NavigationResult)
 	p := Map{
 		"url":            urlStr,
@@ -72,12 +92,17 @@ func (session Session) Navigate(urlStr string) (err error) {
 	if nav.LoaderID == "" {
 		return nil // no navigate need
 	}
-	return loader()
+	for _, cb := range loader {
+		if err = cb(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Reload refresh current page ignores cache
 func (session Session) Reload() error {
-	loader := session.loadEventFired()
+	loader := session.eventFired("Page.loadEventFired", nil)
 	if err := session.call("Page.reload", Map{"ignoreCache": true}, nil); err != nil {
 		return err
 	}

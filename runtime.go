@@ -3,8 +3,8 @@ package cdp
 import "github.com/ecwid/cdp/pkg/devtool"
 
 // Evaluate evaluate javascript code at context of web page
-func (runtime Runtime) Evaluate(code string, async bool, returnByValue bool) (interface{}, error) {
-	result, err := runtime.evaluate(code, runtime.currentContext(), async, returnByValue)
+func (session Runtime) Evaluate(code string, async bool, returnByValue bool) (interface{}, error) {
+	result, err := session.evaluate(code, session.currentContext(), async, returnByValue)
 	if err != nil {
 		return "", err
 	}
@@ -12,7 +12,7 @@ func (runtime Runtime) Evaluate(code string, async bool, returnByValue bool) (in
 }
 
 // Evaluate Evaluates expression on global object.
-func (runtime Runtime) evaluate(expression string, contextID int64, async, returnByValue bool) (*devtool.RemoteObject, error) {
+func (session Runtime) evaluate(expression string, contextID int64, async, returnByValue bool) (*devtool.RemoteObject, error) {
 	p := &devtool.EvaluatesExpression{
 		Expression:    expression,
 		ContextID:     contextID,
@@ -20,7 +20,7 @@ func (runtime Runtime) evaluate(expression string, contextID int64, async, retur
 		ReturnByValue: returnByValue,
 	}
 	result := new(devtool.EvaluatesResult)
-	if err := runtime.call("Runtime.evaluate", p, result); err != nil {
+	if err := session.call("Runtime.evaluate", p, result); err != nil {
 		return nil, err
 	}
 	if result.ExceptionDetails != nil {
@@ -29,14 +29,14 @@ func (runtime Runtime) evaluate(expression string, contextID int64, async, retur
 	return result.Result, nil
 }
 
-func (runtime Runtime) getProperties(objectID string) ([]*devtool.PropertyDescriptor, error) {
+func (session Runtime) getProperties(objectID string) ([]*devtool.PropertyDescriptor, error) {
 	p := Map{
 		"objectId":               objectID,
 		"ownProperties":          true,
 		"accessorPropertiesOnly": false,
 	}
 	result := new(devtool.PropertiesResult)
-	if err := runtime.call("Runtime.getProperties", p, result); err != nil {
+	if err := session.call("Runtime.getProperties", p, result); err != nil {
 		return nil, err
 	}
 	if result.ExceptionDetails != nil {
@@ -45,7 +45,7 @@ func (runtime Runtime) getProperties(objectID string) ([]*devtool.PropertyDescri
 	return result.Result, nil
 }
 
-func (runtime Runtime) callFunctionOn(objectID string, functionDeclaration string, awaitPromise, returnByValue bool, arg ...interface{}) (*devtool.RemoteObject, error) {
+func (session Runtime) callFunctionOn(objectID string, functionDeclaration string, awaitPromise, returnByValue bool, arg ...interface{}) (*devtool.RemoteObject, error) {
 	args := make([]devtool.CallArgument, len(arg))
 	for i, a := range arg {
 		args[i] = devtool.CallArgument{Value: a}
@@ -58,7 +58,7 @@ func (runtime Runtime) callFunctionOn(objectID string, functionDeclaration strin
 		"returnByValue":       returnByValue,
 	}
 	result := new(devtool.EvaluatesResult)
-	if err := runtime.call("Runtime.callFunctionOn", p, result); err != nil {
+	if err := session.call("Runtime.callFunctionOn", p, result); err != nil {
 		return nil, err
 	}
 	if result.ExceptionDetails != nil {
@@ -67,11 +67,11 @@ func (runtime Runtime) callFunctionOn(objectID string, functionDeclaration strin
 	return result.Result, nil
 }
 
-func (runtime Runtime) releaseObject(objectID string) error {
-	return runtime.call("Runtime.releaseObject", Map{"objectId": objectID}, nil)
+func (session Runtime) releaseObject(objectID string) error {
+	return session.call("Runtime.releaseObject", Map{"objectId": objectID}, nil)
 }
 
 // TerminateExecution Terminate current or next JavaScript execution. Will cancel the termination when the outer-most script execution ends
-func (runtime Runtime) TerminateExecution() error {
-	return runtime.call("Runtime.terminateExecution", nil, nil)
+func (session Runtime) TerminateExecution() error {
+	return session.call("Runtime.terminateExecution", nil, nil)
 }

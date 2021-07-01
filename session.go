@@ -93,6 +93,9 @@ func (session *Session) attachToTarget(targetID string) error {
 	if err = session.call("Network.enable", Map{"maxPostDataSize": 2 * 1024}, nil); err != nil {
 		return err
 	}
+	if err = session.call("Page.setLifecycleEventsEnabled", Map{"enabled": true}, nil); err != nil {
+		return err
+	}
 	return nil
 }
 

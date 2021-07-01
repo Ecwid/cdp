@@ -12,16 +12,16 @@ const (
 )
 
 // MouseMove ...
-func (input Input) MouseMove(x, y float64) error {
-	return input.dispatchMouseEvent(x, y, dispatchMouseEventMoved, "none")
+func (session Input) MouseMove(x, y float64) error {
+	return session.dispatchMouseEvent(x, y, dispatchMouseEventMoved, "none")
 }
 
 // Press ...
-func (input Input) Press(c rune) error {
-	return input.press(keyDefinition{keyCode: int(c), text: string(c)})
+func (session Input) Press(c rune) error {
+	return session.press(keyDefinition{keyCode: int(c), text: string(c)})
 }
 
-func (input Input) press(k keyDefinition) error {
+func (session Input) press(k keyDefinition) error {
 	if k.text == "" {
 		k.text = k.key
 	}
@@ -32,7 +32,7 @@ func (input Input) press(k keyDefinition) error {
 		"windowsVirtualKeyCode": k.keyCode,
 		"text":                  k.text,
 	}
-	if err := input.call("Input.dispatchKeyEvent", p, nil); err != nil {
+	if err := session.call("Input.dispatchKeyEvent", p, nil); err != nil {
 		return err
 	}
 	p = Map{
@@ -41,16 +41,16 @@ func (input Input) press(k keyDefinition) error {
 		"type": dispatchKeyEventKeyUp,
 		"text": k.text,
 	}
-	return input.call("Input.dispatchKeyEvent", p, nil)
+	return session.call("Input.dispatchKeyEvent", p, nil)
 }
 
 // InsertText method emulates inserting text that doesn't come from a key press, for example an emoji keyboard or an IME
-func (input Input) InsertText(text string) error {
-	return input.call("Input.insertText", Map{"text": text}, nil)
+func (session Input) InsertText(text string) error {
+	return session.call("Input.insertText", Map{"text": text}, nil)
 }
 
-func (input Input) dispatchMouseEvent(x float64, y float64, eventType string, button string) error {
-	return input.call("Input.dispatchMouseEvent", Map{
+func (session Input) dispatchMouseEvent(x float64, y float64, eventType string, button string) error {
+	return session.call("Input.dispatchMouseEvent", Map{
 		"type":       eventType,
 		"button":     button,
 		"x":          x,

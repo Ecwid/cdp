@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ecwid/cdp"
+	"github.com/ecwid/cdp/pkg/devtool"
 )
 
 func main() {
@@ -27,19 +28,14 @@ func main() {
 	browser.GetWSClient().SetLogLevel(cdp.LevelProtocolFatal)
 
 	sess.SetTimeout(time.Second * 30)
-	if err := sess.OverlayEnable(true); err != nil {
+	if err = sess.Navigate("https://mdemo.ecwid.com/", devtool.NetworkIdle); err != nil {
 		panic(err)
 	}
-	sess.Navigate("https://mdemo.ecwid.com/")
-	sess.Navigate("https://mdemo.ecwid.com/#!/~/abc")
 
 	all, err := sess.QueryAll(".ec-static-container .grid-product")
 	if err != nil {
 		panic(err)
 	}
-
-	// // _, fn := sess.Listen("Runtime.consoleAPICalled")
-	// // defer fn()
 
 	for _, card := range all {
 		titleElement, err := card.Query(".grid-product__title-inner")

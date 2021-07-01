@@ -6,17 +6,17 @@ import (
 )
 
 // SetDeviceMetricsOverride ...
-func (emu Emulation) SetDeviceMetricsOverride(metrics *devtool.DeviceMetrics) error {
-	return emu.call("Emulation.setDeviceMetricsOverride", metrics, nil)
+func (session Emulation) SetDeviceMetricsOverride(metrics *devtool.DeviceMetrics) error {
+	return session.call("Emulation.setDeviceMetricsOverride", metrics, nil)
 }
 
 // SetUserAgent set user agent
-func (emu Emulation) SetUserAgent(userAgent string) error {
-	return emu.SetUserAgentOverride(userAgent, nil, nil)
+func (session Emulation) SetUserAgent(userAgent string) error {
+	return session.SetUserAgentOverride(userAgent, nil, nil)
 }
 
 // SetUserAgentOverride ...
-func (emu Emulation) SetUserAgentOverride(userAgent string, acceptLanguage, platform *string) error {
+func (session Emulation) SetUserAgentOverride(userAgent string, acceptLanguage, platform *string) error {
 	p := Map{"userAgent": userAgent}
 	if acceptLanguage != nil {
 		p["acceptLanguage"] = acceptLanguage
@@ -24,30 +24,30 @@ func (emu Emulation) SetUserAgentOverride(userAgent string, acceptLanguage, plat
 	if platform != nil {
 		p["platform"] = platform
 	}
-	return emu.call("Emulation.setUserAgentOverride", p, nil)
+	return session.call("Emulation.setUserAgentOverride", p, nil)
 }
 
 // ClearDeviceMetricsOverride ...
-func (emu Emulation) ClearDeviceMetricsOverride() error {
-	return emu.call("Emulation.clearDeviceMetricsOverride", nil, nil)
+func (session Emulation) ClearDeviceMetricsOverride() error {
+	return session.call("Emulation.clearDeviceMetricsOverride", nil, nil)
 }
 
 // SetScrollbarsHidden ...
-func (emu Emulation) SetScrollbarsHidden(hidden bool) error {
-	return emu.call("Emulation.setScrollbarsHidden", Map{"hidden": hidden}, nil)
+func (session Emulation) SetScrollbarsHidden(hidden bool) error {
+	return session.call("Emulation.setScrollbarsHidden", Map{"hidden": hidden}, nil)
 }
 
 // SetCPUThrottlingRate https://chromedevtools.github.io/devtools-protocol/tot/Emulation#method-setCPUThrottlingRate
-func (emu Emulation) SetCPUThrottlingRate(rate int) error {
-	return emu.call("Emulation.setCPUThrottlingRate", Map{"rate": rate}, nil)
+func (session Emulation) SetCPUThrottlingRate(rate int) error {
+	return session.call("Emulation.setCPUThrottlingRate", Map{"rate": rate}, nil)
 }
 
 // Emulate emulate predefined device
-func (emu Emulation) Emulate(device *mobile.Device) error {
+func (session Emulation) Emulate(device *mobile.Device) error {
 	f := true
 	device.Metrics.DontSetVisibleSize = &f
-	if err := emu.SetDeviceMetricsOverride(device.Metrics); err != nil {
+	if err := session.SetDeviceMetricsOverride(device.Metrics); err != nil {
 		return err
 	}
-	return emu.SetUserAgent(device.UserAgent)
+	return session.SetUserAgent(device.UserAgent)
 }
