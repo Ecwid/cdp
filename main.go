@@ -221,14 +221,12 @@ func (session Session) FitToWindow() error {
 }
 
 // CaptureScreenshot get screen of current page
-func (session Session) CaptureScreenshot(format string, quality int8) ([]byte, error) {
-	if err := session.SetScrollbarsHidden(true); err != nil {
-		return nil, err
-	}
+func (session Session) CaptureScreenshot(format string, quality int8, clip *devtool.Viewport) ([]byte, error) {
 	p := Map{
 		"format":      format,
 		"quality":     quality,
 		"fromSurface": true,
+		"clip":        clip,
 	}
 	result := Map{}
 	err := session.call("Page.captureScreenshot", p, &result)

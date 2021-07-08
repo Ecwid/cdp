@@ -27,9 +27,6 @@ func newElement(s *Session, parent *Element, re *devtool.RemoteObject) *Element 
 		session:     s,
 		context:     s.currentContext(),
 	}
-	if s.OnElementBinded != nil {
-		s.OnElementBinded(e)
-	}
 	return e
 }
 

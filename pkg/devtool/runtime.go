@@ -1,8 +1,8 @@
 package devtool
 
 import (
+	"encoding/json"
 	"errors"
-	"fmt"
 )
 
 // ExecutionContextDescription https://chromedevtools.github.io/devtools-protocol/tot/Runtime#type-ExecutionContextDescription
@@ -69,17 +69,21 @@ type CallArgument struct {
 
 // EvaluatesExpression https://chromedevtools.github.io/devtools-protocol/tot/Runtime#method-evaluate
 type EvaluatesExpression struct {
-	Expression            string `json:"expression"`
-	ObjectGroup           string `json:"objectGroup,omitempty"`
-	IncludeCommandLineAPI bool   `json:"includeCommandLineAPI,omitempty"`
-	Silent                bool   `json:"silent,omitempty"`
-	ContextID             int64  `json:"contextId,omitempty"`
-	ReturnByValue         bool   `json:"returnByValue,omitempty"`
-	GeneratePreview       bool   `json:"generatePreview,omitempty"`
-	UserGesture           bool   `json:"userGesture,omitempty"`
-	AwaitPromise          bool   `json:"awaitPromise,omitempty"`
-	ThrowOnSideEffect     bool   `json:"throwOnSideEffect,omitempty"`
-	Timeout               int64  `json:"timeout,omitempty"`
+	Expression                  string `json:"expression"`
+	ObjectGroup                 string `json:"objectGroup,omitempty"`
+	IncludeCommandLineAPI       bool   `json:"includeCommandLineAPI,omitempty"`
+	Silent                      bool   `json:"silent,omitempty"`
+	ContextID                   int64  `json:"contextId,omitempty"`
+	ReturnByValue               bool   `json:"returnByValue,omitempty"`
+	GeneratePreview             bool   `json:"generatePreview,omitempty"`
+	UserGesture                 bool   `json:"userGesture,omitempty"`
+	AwaitPromise                bool   `json:"awaitPromise,omitempty"`
+	ThrowOnSideEffect           bool   `json:"throwOnSideEffect,omitempty"`
+	Timeout                     int64  `json:"timeout,omitempty"`
+	DisableBreaks               bool   `json:"disableBreaks,omitempty"`
+	ReplMode                    bool   `json:"replMode,omitempty"`
+	AllowUnsafeEvalBlockedByCSP bool   `json:"allowUnsafeEvalBlockedByCSP,omitempty"`
+	UniqueContextId             string `json:"uniqueContextId,omitempty"`
 }
 
 // EvaluatesResult https://chromedevtools.github.io/devtools-protocol/tot/Runtime#method-evaluate
@@ -89,7 +93,8 @@ type EvaluatesResult struct {
 }
 
 func (e *ExceptionDetails) Error() string {
-	return fmt.Sprintf("%+v", e.Exception)
+	b, _ := json.Marshal(e)
+	return string(b)
 }
 
 // StackTrace https://chromedevtools.github.io/devtools-protocol/tot/Runtime#type-StackTrace

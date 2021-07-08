@@ -1,6 +1,8 @@
 package cdp
 
-import "github.com/ecwid/cdp/pkg/devtool"
+import (
+	"github.com/ecwid/cdp/pkg/devtool"
+)
 
 // Evaluate evaluate javascript code at context of web page
 func (session Runtime) Evaluate(code string, async bool, returnByValue bool) (interface{}, error) {
@@ -14,10 +16,11 @@ func (session Runtime) Evaluate(code string, async bool, returnByValue bool) (in
 // Evaluate Evaluates expression on global object.
 func (session Runtime) evaluate(expression string, contextID int64, async, returnByValue bool) (*devtool.RemoteObject, error) {
 	p := &devtool.EvaluatesExpression{
-		Expression:    expression,
-		ContextID:     contextID,
-		AwaitPromise:  !async,
-		ReturnByValue: returnByValue,
+		Expression:            expression,
+		IncludeCommandLineAPI: true,
+		ContextID:             contextID,
+		AwaitPromise:          !async,
+		ReturnByValue:         returnByValue,
 	}
 	result := new(devtool.EvaluatesResult)
 	if err := session.call("Runtime.evaluate", p, result); err != nil {

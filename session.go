@@ -17,31 +17,29 @@ type Map map[string]interface{}
 
 // Session ...
 type Session struct {
-	ws              *WSClient
-	id              string
-	state           *state
-	target          string
-	broadcast       chan *wsBroadcast
-	closed          chan struct{}
-	err             chan error
-	deadline        time.Duration
-	eventsMutex     *sync.Mutex
-	listeners       map[string]*list.List
-	OnElementBinded func(e *Element)
+	ws          *WSClient
+	id          string
+	state       *state
+	target      string
+	broadcast   chan *wsBroadcast
+	closed      chan struct{}
+	err         chan error
+	deadline    time.Duration
+	eventsMutex *sync.Mutex
+	listeners   map[string]*list.List
 }
 
 func newSession(ws *WSClient) *Session {
 	return &Session{
-		id:              "",
-		ws:              ws,
-		eventsMutex:     &sync.Mutex{},
-		state:           newState(),
-		listeners:       map[string]*list.List{},
-		broadcast:       make(chan *wsBroadcast, 10),
-		closed:          make(chan struct{}, 1),
-		err:             make(chan error, 1),
-		deadline:        60 * time.Second,
-		OnElementBinded: nil,
+		id:          "",
+		ws:          ws,
+		eventsMutex: &sync.Mutex{},
+		state:       newState(),
+		listeners:   map[string]*list.List{},
+		broadcast:   make(chan *wsBroadcast, 10),
+		closed:      make(chan struct{}, 1),
+		err:         make(chan error, 1),
+		deadline:    60 * time.Second,
 	}
 }
 
