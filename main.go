@@ -213,8 +213,8 @@ func (session Session) FitToWindow() error {
 		return err
 	}
 	return session.SetDeviceMetricsOverride(&devtool.DeviceMetrics{
-		Width:             view.LayoutViewport.ClientWidth,
-		Height:            int64(math.Ceil(view.ContentSize.Height)),
+		Width:             view.CssLayoutViewport.ClientWidth,
+		Height:            int64(math.Ceil(view.CssContentSize.Height)),
 		DeviceScaleFactor: 1,
 		Mobile:            false,
 	})
@@ -226,7 +226,9 @@ func (session Session) CaptureScreenshot(format string, quality int8, clip *devt
 		"format":      format,
 		"quality":     quality,
 		"fromSurface": true,
-		"clip":        clip,
+	}
+	if clip != nil {
+		p["clip"] = clip
 	}
 	result := Map{}
 	err := session.call("Page.captureScreenshot", p, &result)

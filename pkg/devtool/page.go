@@ -84,9 +84,12 @@ type VisualViewport struct {
 
 // LayoutMetrics https://chromedevtools.github.io/devtools-protocol/tot/Page#method-getLayoutMetrics
 type LayoutMetrics struct {
-	LayoutViewport *LayoutViewport `json:"layoutViewport"`
-	VisualViewport *VisualViewport `json:"visualViewport"`
-	ContentSize    *Rect           `json:"contentSize"`
+	LayoutViewport    *LayoutViewport `json:"layoutViewport"` // deprecated
+	VisualViewport    *VisualViewport `json:"visualViewport"` // deprecated
+	ContentSize       *Rect           `json:"contentSize"`    // deprecated
+	CssLayoutViewport *LayoutViewport `json:"cssLayoutViewport"`
+	CssVisualViewport *VisualViewport `json:"cssVisualViewport"`
+	CssContentSize    *Rect           `json:"cssContentSize"`
 }
 
 // NavigationHistory https://chromedevtools.github.io/devtools-protocol/tot/Page#method-getNavigationHistory
